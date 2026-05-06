@@ -39,6 +39,13 @@ export default function StatusKlaim() {
     alert(`Mengunduh surat klaim untuk polis ${claimNo}`);
   };
 
+  const getButtonStyle = (status) => {
+    if (status === 'DITOLAK') {
+      return 'bg-gray-200 hover:bg-gray-300 text-gray-400';
+    }
+    return 'bg-gray-300 hover:bg-gray-500 text-sky-950';
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-10">
       <h1 className="text-2xl font-bold text-gray-800">Status Klaim</h1>
@@ -50,36 +57,16 @@ export default function StatusKlaim() {
             className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden"
           >
             <div className="p-5 space-y-4">
-              {/* Bagian Ikon + Jenis Asuransi (flex, ikon di kiri) */}
-              <div className="flex gap-4 items-start">
-                <div className="text-3xl mt-1">{claim.icon}</div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">{claim.jenis}</h2>
-                  <p className="text-sm text-gray-500">#{claim.noPolis}</p>
+              {/* Baris 1: Ikon + Jenis Asuransi (kiri) dan Status (kanan) */}
+              <div className="flex justify-between items-start">
+                <div className="flex gap-4 items-start">
+                  <div className="text-3xl mt-1">{claim.icon}</div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800">{claim.jenis}</h2>
+                    <p className="text-sm text-gray-500">#{claim.noPolis}</p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Tanggal Pengajuan dan Pencairan */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-500 font-semibold">TANGGAL PENGAJUAN</p>
-                  <p className="font-medium">{claim.tglPengajuan}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 font-semibold">TANGGAL PENCAIRAN</p>
-                  <p className="font-medium">
-                    {claim.tglPencairan === '-'
-                      ? '-'
-                      : claim.tglPencairan === 'Menunggu Verifikasi'
-                      ? <span className="italic">{claim.tglPencairan}</span>
-                      : claim.tglPencairan}
-                  </p>
-                </div>
-              </div>
-
-              {/* Status dan Jumlah Klaim */}
-              <div>
-                <p
+                 <p
                   className={`text-lg font-bold ${
                     claim.status === 'DISETUJUI'
                       ? 'text-green-700'
@@ -90,22 +77,44 @@ export default function StatusKlaim() {
                 >
                   {claim.status}
                 </p>
-                <p className="text-gray-500 text-sm mt-2">JUMLAH KLAIM</p>
-                <p className="text-xl font-bold text-gray-800">{claim.jumlah}</p>
               </div>
 
-              {/* Tombol Unduh PDF */}
+              {/* Baris 2: Tanggal Pengajuan (kiri) dan Jumlah Klaim (kanan) */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-black font-semibold text-sm">TANGGAL PENGAJUAN</p>
+                  <p className="font-medium text-sky-950">{claim.tglPengajuan}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-black font-semibold text-sm">JUMLAH KLAIM</p>
+                  <p className="text-xl font-bold text-sky-950">{claim.jumlah}</p>
+                </div>
+              </div>
+
+              {/* Baris 3: Tanggal Pencairan (kiri saja) */}
+              <div>
+                <p className="text-black font-semibold text-sm">TANGGAL PENCAIRAN</p>
+                <p className="font-medium text-blue-300">
+                  {claim.tglPencairan === '-'
+                    ? '-'
+                    : claim.tglPencairan === 'Menunggu Verifikasi'
+                    ? <span className="italic">{claim.tglPencairan}</span>
+                    : claim.tglPencairan}
+                </p>
+              </div>
+
+              {/* Tombol Unduh PDF - Full width */}
               <div className="pt-2">
                 <button
                   onClick={() => handleDownload(claim.noPolis)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-900 hover:bg-gray-500 text-white rounded-lg text-sm font-medium transition shadow-sm"
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm ${getButtonStyle(claim.status)}`}
                 >
                   <FaDownload size={14} />
                   Unduh Surat Klaim (PDF)
                 </button>
               </div>
+              </div>
             </div>
-          </div>
         ))}
 
         {claims.length === 0 && (
