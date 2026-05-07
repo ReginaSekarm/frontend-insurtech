@@ -1,23 +1,15 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { FaPaperPlane } from 'react-icons/fa';
 
 export default function AjukanKlaim() {
-  
   const polisList = [
     { id: 'P-101', name: 'Asuransi Kesehatan' },
     { id: 'P-102', name: 'Asuransi Properti' },
     { id: 'P-205', name: 'Asuransi Kendaraan' },
   ];
 
-  const jenisKlaimList = [
-    'Rawat Inap',
-    'Kecelakaan',
-    'Kebakaran',
-    'Pencurian',
-    'Kerusakan',
-  ];
+  const jenisKlaimList = ['Rawat Inap', 'Kecelakaan', 'Kebakaran', 'Pencurian', 'Kerusakan'];
 
-  // form
   const [formData, setFormData] = useState({
     polisId: '',
     jenisKlaim: '',
@@ -37,71 +29,63 @@ export default function AjukanKlaim() {
       setFileName(files[0].name);
     } else {
       setFormData({ ...formData, [name]: value });
-      
       setStatusDraft('Draft Tersimpan');
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     console.log('Data Klaim:', formData);
     alert('Klaim berhasil diajukan! Status akan diperbarui dalam 24-48 jam.');
     setStatusDraft('Draft Terkirim');
-   
   };
 
   return (
     <div className="min-h-screen bg-gray-100 py-10 px-4">
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+
         {/* Header */}
         <div className="bg-gradient-to-r from-sky-950 to-sky-800 px-6 py-5">
           <h1 className="text-2xl md:text-3xl font-bold text-white">Ajukan Klaim</h1>
           <p className="text-blue-100 text-sm mt-1">Isi formulir klaim dengan data yang benar dan lengkap.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
-          {/* Dua kolom: form kiri + info kanan */}
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Kolom kiri (form utama) - 2/3 lebar */}
-            <div className="md:col-span-2 space-y-5">
-              {/* Pilih Polis */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Pilih Polis</label>
-                <select
-                  name="polisId"
-                  value={formData.polisId}
-                  onChange={handleChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">-- Pilih polis --</option>
-                  {polisList.map(polis => (
-                    <option key={polis.id} value={polis.id}>
-                      {polis.id} - {polis.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 md:p-8 space-y-5">
 
-              {/* Jenis Klaim */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Jenis Klaim</label>
-                <select
-                  name="jenisKlaim"
-                  value={formData.jenisKlaim}
-                  onChange={handleChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- Pilih jenis klaim --</option>
-                  {jenisKlaimList.map((jk, idx) => (
-                    <option key={idx} value={jk}>{jk}</option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Pilih Polis</label>
+              <select
+                name="polisId"
+                value={formData.polisId}
+                onChange={handleChange}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-stone-300"
+              >
+                <option value="">-- Pilih polis --</option>
+                {polisList.map(polis => (
+                  <option key={polis.id} value={polis.id}>{polis.id} - {polis.name}</option>
+                ))}
+              </select>
+            </div>
 
-              {/* Jumlah (Rp) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Jenis Klaim</label>
+              <select
+                name="jenisKlaim"
+                value={formData.jenisKlaim}
+                onChange={handleChange}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-stone-300"
+              >
+                <option value="">-- Pilih jenis klaim --</option>
+                {jenisKlaimList.map((jk, idx) => (
+                  <option key={idx} value={jk}>{jk}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Jumlah (Rp)</label>
                 <input
@@ -111,11 +95,9 @@ export default function AjukanKlaim() {
                   onChange={handleChange}
                   placeholder="0"
                   required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-stone-300"
                 />
               </div>
-
-              {/* Tanggal Kejadian */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Tanggal Kejadian</label>
                 <input
@@ -124,66 +106,68 @@ export default function AjukanKlaim() {
                   value={formData.tanggalKejadian}
                   onChange={handleChange}
                   required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-stone-300"
                 />
               </div>
+            </div>
 
-              {/* Deskripsi Kejadian */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Deskripsi Kejadian</label>
-                <textarea
-                  name="deskripsi"
-                  rows="4"
-                  value={formData.deskripsi}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Deskripsi Kejadian</label>
+              <textarea
+                name="deskripsi"
+                rows="4"
+                value={formData.deskripsi}
+                onChange={handleChange}
+                placeholder="Ceritakan kronologi kejadian secara lengkap..."
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-stone-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Dokumen Pendukung</label>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="file"
+                  name="dokumen"
+                  accept=".jpg,.jpeg,.png,.pdf"
                   onChange={handleChange}
-                  placeholder="Ceritakan kronologi kejadian secara lengkap..."
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-              </div>
-
-              {/* Upload Dokumen Pendukung */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Dokumen Pendukung</label>
-                <div className="flex flex-col gap-2">
-                  <input
-                    type="file"
-                    name="dokumen"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={handleChange}
-                    className="w-full text-sm text-gray-500 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
+                  className="w-full text-sm text-gray-500 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                <div className="flex flex-wrap gap-3 mt-2">
+                  <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">📸 FOTO</span>
+                  <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">📄 KTP.pdf</span>
                   {fileName && (
-                    <div className="flex flex-wrap gap-3 mt-2">
-                      <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">
-                        📄 {fileName}
-                      </span>
-                    </div>
+                    <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">📄 {fileName}</span>
                   )}
-                  <p className="text-xs text-gray-400">Format: JPG, PNG, PDF (maks 5MB)</p>
                 </div>
+                <p className="text-xs text-gray-400">Format: JPG, PNG, PDF (maks 5MB)</p>
               </div>
             </div>
 
-            {/* Kolom kanan - info estimasi dan status */}
-            <div className="space-y-5">
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                <h3 className="font-bold text-blue-800 text-sm uppercase tracking-wide">ESTIMASI VERIFIKASI</h3>
-                <p className="text-2xl font-bold text-blue-900 mt-1">24 - 48 Jam</p>
-                <p className="text-blue-700 text-xs mt-1">Jam Kerja (Senin-Jumat)</p>
-              </div>
-            </div>
           </div>
 
-          {/* Tombol Ajukan Klaim */}
-          <div className="flex justify-end pt-4 border-t">
+          {/* Footer Bar - Estimasi, Status, Tombol */}
+          <div className="border-t border-gray-200 px-6 py-4 bg-gray-200">
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Estimasi Verifikasi</p>
+                <p className="text-sm font-bold text-sky-900 mt-0.5">24 - 48 Jam Kerja</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Status</p>
+                <p className="text-sm font-bold text-blue-400 mt-0.5">{statusDraft}</p>
+              </div>
+            </div>
             <button
               type="submit"
-              className="bg-gradient-to-r from-sky-950 to-sky-800 hover:from-sky-800 hover:to-sky-950 text-white font-bold py-3 px-8 rounded-xl shadow-md transition transform hover:scale-105"
+              className="w-full flex items-center justify-center gap-2 bg-sky-950 hover:bg-sky-800 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105"
             >
               Ajukan Klaim
+              <FaPaperPlane />
             </button>
           </div>
+
         </form>
       </div>
     </div>

@@ -120,7 +120,7 @@ export default function RegisterPage() {
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
           {step === 1 ? (
-            // Step 1: Identitas Pribadi
+            // Step 1: Identitas Pribadi (tidak berubah)
             <div>
               <div className="mb-6 flex items-start gap-3">
                 <FaUserCircle className="text-sky-900 text-3xl mt-1" />
@@ -289,19 +289,22 @@ export default function RegisterPage() {
                     Saya menyetujui <a href="#" className="text-sky-900 font-medium">Syarat & Ketentuan serta Kebijakan Privasi InsurTech</a>
                   </label>
                 </div>
-                <div className="flex gap-3 pt-2">
+
+                {/* ✅ PERUBAHAN: Tombol Daftar di atas, Kembali di bawah dengan ikon panah */}
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
+                  >
+                    Daftar
+                  </button>
                   <button
                     type="button"
                     onClick={handleBack}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition"
+                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2"
                   >
+                    <FaArrowLeft size={16} />
                     Kembali
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
-                  >
-                    Daftar
                   </button>
                 </div>
               </form>

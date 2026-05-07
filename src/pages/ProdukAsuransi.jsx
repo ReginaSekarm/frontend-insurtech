@@ -130,7 +130,7 @@ export default function ProdukAsuransi() {
                     <span className="text-gray-500 text-sm">{product.period}</span>
                   </div>
                 </div>
-                <button onClick={() => handlePilihClick(product)} className="bg-sky-950 hover:bg-sky-700 text-white font-semibold px-5 py-2 rounded-lg transition flex items-center gap-1">
+                <button onClick={() => handlePilihClick(product)} className="bg-sky-100 hover:bg-gray-400 text-sky-950 font-semibold px-5 py-2 rounded-lg transition flex items-center gap-1">
                   Pilih 
                 </button>
               </div>
@@ -152,7 +152,13 @@ export default function ProdukAsuransi() {
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Nilai Pertanggungan (Rp)</label><select name="nilaiPertanggungan" value={formData.nilaiPertanggungan} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2"><option value="">Pilih nilai pertanggungan</option>{pertanggunganOptions[selectedProduct.name]?.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama Penerima</label><input type="text" name="namaPenerima" value={formData.namaPenerima} onChange={handleFormChange} placeholder="Nama lengkap sesuai KTP" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">NIK Penerima</label><input type="text" name="nikPenerima" value={formData.nikPenerima} onChange={handleFormChange} placeholder="16 digit NIK" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
-              <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Premi dihitung berdasarkan jenis polis dan nilai pertanggungan</p><p className="text-2xl font-bold text-sky-950 mt-1">Rp {hitungPremi().toLocaleString('id-ID')}</p></div>
+              <div className="bg-blue-50 p-3 rounded-lg space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-700">Premi Bulanan:</span>
+                <span className="text-1xl font-bold text-sky-950">Rp {hitungPremi().toLocaleString('id-ID')}</span>
+              </div>
+              <p className="text-xs text-gray-500">Premi dihitung berdasarkan jenis polis dan nilai pertanggungan</p>
+            </div>
               <div className="flex gap-3 pt-2"><button onClick={() => setShowModal(false)} className="flex-1 border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg">Batal</button><button onClick={handleBeliPolis} className="flex-1 bg-sky-950 hover:bg-gray-500 text-white font-semibold py-2 rounded-lg">Beli Polis Baru</button></div>
             </div>
           </div>

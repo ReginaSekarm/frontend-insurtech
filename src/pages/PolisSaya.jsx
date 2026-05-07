@@ -105,7 +105,7 @@ export default function PolisSaya() {
                 <Link
                   to="/ajukan-klaim"
                   state={{ polisId: polis.noPolis, polisJenis: polis.jenis }}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 border border-sky-950 text-sky-900 font-medium rounded-lg hover:bg-blue-300 transition"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-sky-900 font-medium rounded-lg hover:bg-gray-300 transition"
                 >
                   + Ajukan Klaim
                 </Link>
@@ -118,7 +118,7 @@ export default function PolisSaya() {
                     premiFormatted: polis.premiFormatted,
                     periode: polis.periode
                   }}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-sky-900 hover:bg-gray-500 text-white font-medium rounded-lg transition shadow-sm"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 shadow-md bg-white hover:bg-gray-300 text-sky-950 font-medium rounded-lg transition shadow-sm"
                 >
                   Bayar Premi
                 </Link>

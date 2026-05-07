@@ -91,16 +91,20 @@ export default function StatusKlaim() {
                 </div>
               </div>
 
-              {/* Baris 3: Tanggal Pencairan (kiri saja) */}
+              {/* Baris 3: Tanggal Pencairan - sekarang selalu biru (kecuali DITOLAK tetap strip) */}
               <div>
                 <p className="text-black font-semibold text-sm">TANGGAL PENCAIRAN</p>
-                <p className="font-medium text-blue-300">
-                  {claim.tglPencairan === '-'
-                    ? '-'
-                    : claim.tglPencairan === 'Menunggu Verifikasi'
-                    ? <span className="italic">{claim.tglPencairan}</span>
-                    : claim.tglPencairan}
-                </p>
+                {claim.status === 'DITOLAK' ? (
+                  <p className="text-red-600 text-lg font-bold">-</p>
+                ) : (
+                  <p className="font-medium text-blue-500">
+                    {claim.tglPencairan === '-'
+                      ? '-'
+                      : claim.tglPencairan === 'Menunggu Verifikasi'
+                      ? <span className="italic">{claim.tglPencairan}</span>
+                      : claim.tglPencairan}
+                  </p>
+                )}
               </div>
 
               {/* Tombol Unduh PDF - Full width */}
