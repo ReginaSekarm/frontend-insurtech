@@ -62,7 +62,7 @@ export default function AjukanKlaim() {
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-stone-300"
               >
-                <option value="">-- Pilih polis --</option>
+                <option value="">Pilih polis</option>
                 {polisList.map(polis => (
                   <option key={polis.id} value={polis.id}>{polis.id} - {polis.name}</option>
                 ))}
@@ -78,7 +78,7 @@ export default function AjukanKlaim() {
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 bg-stone-300"
               >
-                <option value="">-- Pilih jenis klaim --</option>
+                <option value="">Pilih jenis klaim</option>
                 {jenisKlaimList.map((jk, idx) => (
                   <option key={idx} value={jk}>{jk}</option>
                 ))}
@@ -147,7 +147,7 @@ export default function AjukanKlaim() {
 
           </div>
 
-          {/* Footer Bar - Estimasi, Status, Tombol */}
+          {/* Footer Bar */}
           <div className="border-t border-gray-200 px-6 py-4 bg-gray-200">
             <div className="flex justify-between items-center mb-3">
               <div>

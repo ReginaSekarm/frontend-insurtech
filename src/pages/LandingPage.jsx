@@ -5,7 +5,7 @@ import agen from '../assets/agen.png';
 import { FaHeartbeat, FaHome, FaCar, FaGraduationCap } from 'react-icons/fa';
 import { Shield, MapPin, Phone, Mail, Clock, FileText, Lock } from 'lucide-react';
 
-// ─── MAIN ────────────────────────────────────────────────────────────────────
+// MAIN 
 export default function LandingPage() {
   return (
     <div className="font-sans">
@@ -17,7 +17,7 @@ export default function LandingPage() {
   );
 }
 
-// ─── DATA ───────────────────────────────────────────────────────────────────
+// DATA 
 const stats = [
   { value: '50+', label: 'Pelanggan Aktif' },
   { value: '25+', label: 'Klaim Diproses' },
@@ -65,7 +65,7 @@ const keunggulan = [
 
 //* Section */
 function Navbar() {
-  const navigate = useNavigate(); // ✅ tambahkan hook navigasi
+  const navigate = useNavigate(); 
   return (
     <nav className="flex items-center justify-between px-8 py-4">
       <div className="flex items-center gap-2 font-bold text-sky-900 text-lg">
@@ -192,16 +192,16 @@ function Produk() {
           ))}
         </div>
 
-        {/* card keunggulan */}
-        <div className="bg-blue-400 rounded-2xl p-8">
-          <h3 className="text-white text-2xl font-extrabold text-center mb-6">
+        {/* Card Keunggulan */}
+         <div className="bg-blue-300 rounded-2xl p-8 w-fit mx-auto">
+          <h3 className="text-white text-lg font-bold text-center mb-6">
             Keunggulan Kami Untuk Anda
           </h3>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-wrap justify-center gap-8">
             {keunggulan.map(({ icon, label }) => (
-              <div key={label} className="bg-white/40 rounded-xl px-4 py-2 flex items-center gap-2 w-auto">
+              <div key={label} className="bg-white/40 rounded-lg px-2.5 py-3 flex items-center gap-1.5">
                 {icon}
-                <span className="text-sky-950 font-semibold text-sm whitespace-nowrap">{label}</span>
+                <span className="text-sky-950 font-semibold text-xs whitespace-nowrap">{label}</span>
               </div>
             ))}
           </div>

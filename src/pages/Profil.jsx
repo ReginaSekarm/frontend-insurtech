@@ -7,19 +7,17 @@ export default function Profil() {
   const location = useLocation();
   const [showPhoneSuccess, setShowPhoneSuccess] = useState(false);
 
-  // Deteksi apakah baru saja berhasil ubah telepon
+ 
   useEffect(() => {
     if (location.state?.phoneUpdateSuccess) {
       setShowPhoneSuccess(true);
-      // Hapus state dari URL agar tidak muncul lagi saat refresh
       window.history.replaceState({}, document.title);
-      // Auto hilang setelah 3 detik
       const timer = setTimeout(() => setShowPhoneSuccess(false), 3000);
       return () => clearTimeout(timer);
     }
   }, [location.state]);
 
-  // Data dummy (bisa diambil dari state global / localStorage / API)
+  
   const profilData = {
     fullName: 'Gendis Ayu Pratiwi',
     email: 'gendis@gmail.com',

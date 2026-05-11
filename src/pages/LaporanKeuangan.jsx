@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FaChevronRight, FaEnvelopeCircleCheck } from 'react-icons/fa6';
-import { Shield } from 'lucide-react';
+import { FaHeartbeat} from 'react-icons/fa';
 
 const daftarTransaksi = [
   {
@@ -9,7 +9,7 @@ const daftarTransaksi = [
     nominal: 200000,
     tanggal: '11 Mar 2025',
     status: 'Pembayaran Bulanan',
-    tipe: 'premi', // untuk menentukan icon
+    tipe: 'premi', 
   },
   {
     id: 2,
@@ -37,10 +37,10 @@ const formatRupiah = (nominal) => {
   }).format(nominal);
 };
 
-// Fungsi untuk memilih icon berdasarkan tipe
+
 const getIcon = (tipe) => {
   if (tipe === 'premi') {
-    return <Shield className="text-red-500 text-2xl" />;
+    return <FaHeartbeat className="text-red-500 text-2xl" />;
   }
   return <FaEnvelopeCircleCheck className="text-green-500 text-2xl" />;
 };
@@ -53,7 +53,7 @@ export default function LaporanKeuangan() {
 
       <div className="space-y-3">
         {daftarTransaksi.map((item) => (
-          // Card putih untuk setiap transaksi
+          
           <div
             key={item.id}
             className="bg-white rounded-xl shadow-md p-4 flex items-start gap-3 hover:shadow-lg transition"
@@ -71,7 +71,7 @@ export default function LaporanKeuangan() {
               <p className="text-xs text-gray-400 mt-0.5">{item.status}</p>
             </div>
 
-            {/* Tombol panah kanan (navigasi) */}
+            {/* Tombol (navigasi) */}
             <Link to={`/rinciantransaksilapkeu/${item.id}`} className="mt-2">
               <FaChevronRight className="text-gray-400 hover:text-blue-600 text-xl cursor-pointer" />
             </Link>

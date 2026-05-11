@@ -62,7 +62,7 @@ export default function UbahPassword() {
       </div>
 
       <div className="bg-white rounded-xl shadow-md p-5 space-y-5">
-        {/* Password Baru dengan icon mata */}
+        {/* Password Baru */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
           <div className="relative">
@@ -88,7 +88,7 @@ export default function UbahPassword() {
           )}
         </div>
 
-        {/* Konfirmasi Password Baru dengan icon mata */}
+        {/* Konfirmasi Password Baru */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password Baru</label>
           <div className="relative">
@@ -143,7 +143,7 @@ export default function UbahPassword() {
             onClick={handleSave}
             className="flex-1 bg-sky-950 hover:bg-gray-500 text-white font-semibold py-2 rounded-lg transition"
           >
-            Simpan Perubahan
+            Simpan
           </button>
           <button
             onClick={() => navigate(-1)}

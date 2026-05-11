@@ -3,7 +3,6 @@ import {
   FaMoneyBillWave,
   FaHandHoldingUsd,
   FaFileInvoiceDollar,
-  FaDownload,
 } from 'react-icons/fa';
 
 export default function RiwayatTransaksi() {
@@ -40,19 +39,16 @@ export default function RiwayatTransaksi() {
 
   const grouped = groupByMonth(transaksi);
   const months = Object.keys(grouped).sort((a, b) => {
-    const dateA = new Date(a);
-    const dateB = new Date(b);
-    return dateB - dateA;
+    return new Date(b) - new Date(a);
   });
 
-  const filteredMonths = selectedMonth ? months.filter(m => m === selectedMonth) : months;
-
-  const handleUnduhLaporan = () => {
-    alert('Mengunduh laporan keuangan (simulasi PDF).');
-  };
+  // FILTER PERIODE 
+  const filteredMonths = selectedMonth 
+    ? months.filter(m => m.includes(selectedMonth)) 
+    : months;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-10">
+    <div className="max-w-4xl mx-auto space-y-6 pb-10 px-4">
       {/* Header */}
       <div className="flex flex-wrap justify-between items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Riwayat Transaksi</h1>
@@ -60,7 +56,7 @@ export default function RiwayatTransaksi() {
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
             <option value="">Periode</option>
             <option value="JANUARI">Januari</option>
@@ -96,7 +92,7 @@ export default function RiwayatTransaksi() {
                           {trx.produk} · {new Date(trx.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       </div>
-                      <p className={`font-bold ${trx.jenis === 'Pencairan Klaim'}`}>
+                      <p className={`font-bold ${trx.jenis === 'Pencairan Klaim' ? 'text-gray-800' : 'text-gray-800'}`}>
                         {trx.jenis === 'Pencairan Klaim'} Rp {trx.nominal.toLocaleString('id-ID')}
                       </p>
                     </div>
@@ -106,9 +102,10 @@ export default function RiwayatTransaksi() {
             </div>
           </div>
         ))}
+        
         {filteredMonths.length === 0 && (
           <div className="text-center py-12 bg-white rounded-xl shadow">
-            <p className="text-gray-500">Tidak ada transaksi untuk periode tersebut.</p>
+            <p className="text-gray-500">Tidak ada transaksi untuk periode {selectedMonth}.</p>
           </div>
         )}
       </div>

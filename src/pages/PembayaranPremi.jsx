@@ -20,6 +20,10 @@ export default function PembayaranPremi() {
     navigate(-1);
   };
 
+  const handleLihatRiwayat = () => {
+    navigate('/riwayat-transaksi');
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
@@ -75,6 +79,14 @@ export default function PembayaranPremi() {
           >
             <FaDownload size={16} />
             Simpan Kode QR
+          </button>
+
+          {/* Tombol Lihat Riwayat Transaksi */}
+          <button
+            onClick={handleLihatRiwayat}
+            className="w-full bg-sky-950 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition"
+          >
+            Lihat Riwayat Transaksi
           </button>
         </div>
       </div>

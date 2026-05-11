@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaChevronRight, FaHeartbeat, FaHome, FaCar, FaGraduationCap } from 'react-icons/fa';
+import { FaHeartbeat, FaHome, FaCar, FaGraduationCap } from 'react-icons/fa';
 
 export default function ProdukAsuransi() {
   const navigate = useNavigate();
@@ -72,17 +72,13 @@ export default function ProdukAsuransi() {
   const handleBeliPolis = () => {
     const { nilaiPertanggungan, namaPenerima, nikPenerima } = formData;
     if (!nilaiPertanggungan || !namaPenerima || !nikPenerima) {
-      setErrorPopup({
-        show: true,
-        message: 'Terdapat data yang belum diisi atau tidak valid. Silahkan periksa kembali:'
-      });
+      // Tampilkan popup 
+      setErrorPopup({ show: true, message: 'Terdapat data yang belum diisi atau tidak valid. Silahkan periksa kembali!' });
+      setTimeout(() => setErrorPopup({ show: false, message: '' }), 3000);
       return;
     }
 
-    // Buat ID transaksi unik (contoh: NMIID-ID + timestamp + random)
     const transactionId = `NMIID-ID${Date.now()}${Math.floor(Math.random() * 1000)}`;
-
-    // Arahkan ke halaman pembayaran polis dengan data
     navigate('/pembayaran-polis', {
       state: {
         total: hitungPremi(),
@@ -131,7 +127,7 @@ export default function ProdukAsuransi() {
                   </div>
                 </div>
                 <button onClick={() => handlePilihClick(product)} className="bg-sky-100 hover:bg-gray-400 text-sky-950 font-semibold px-5 py-2 rounded-lg transition flex items-center gap-1">
-                  Pilih 
+                  Pilih
                 </button>
               </div>
               <div className="mt-4 space-y-1">
@@ -153,21 +149,24 @@ export default function ProdukAsuransi() {
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama Penerima</label><input type="text" name="namaPenerima" value={formData.namaPenerima} onChange={handleFormChange} placeholder="Nama lengkap sesuai KTP" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">NIK Penerima</label><input type="text" name="nikPenerima" value={formData.nikPenerima} onChange={handleFormChange} placeholder="16 digit NIK" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
               <div className="bg-blue-50 p-3 rounded-lg space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-gray-700">Premi Bulanan:</span>
-                <span className="text-1xl font-bold text-sky-950">Rp {hitungPremi().toLocaleString('id-ID')}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-700">Premi Bulanan:</span>
+                  <span className="text-1xl font-bold text-sky-950">Rp {hitungPremi().toLocaleString('id-ID')}</span>
+                </div>
+                <p className="text-xs text-gray-500">Premi dihitung berdasarkan jenis polis dan nilai pertanggungan</p>
               </div>
-              <p className="text-xs text-gray-500">Premi dihitung berdasarkan jenis polis dan nilai pertanggungan</p>
-            </div>
-              <div className="flex gap-3 pt-2"><button onClick={() => setShowModal(false)} className="flex-1 border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg">Batal</button><button onClick={handleBeliPolis} className="flex-1 bg-sky-950 hover:bg-gray-500 text-white font-semibold py-2 rounded-lg">Beli Polis Baru</button></div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowModal(false)} className="flex-1 border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg">Batal</button>
+                <button onClick={handleBeliPolis} className="flex-1 bg-sky-950 hover:bg-gray-500 text-white font-semibold py-2 rounded-lg">Beli Polis Baru</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Popup error data tidak valid */}
+      {/* Popup error */}
       {errorPopup.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5">
             <div className="text-center">
               <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -177,11 +176,11 @@ export default function ProdukAsuransi() {
               </div>
               <h3 className="text-lg font-bold text-gray-800">Data Tidak Valid</h3>
               <p className="text-gray-600 text-sm mt-2">{errorPopup.message}</p>
-              <button onClick={() => setErrorPopup({ show: false, message: '' })} className="mt-4 bg-sky-950 hover:bg-gray-500 text-white px-6 py-2 rounded-lg font-medium">Tutup</button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

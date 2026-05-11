@@ -4,9 +4,8 @@ import { FaArrowLeft, FaUpload, FaCheckCircle, FaUserCircle } from 'react-icons/
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Data Diri, 2: Dokumen
+  const [step, setStep] = useState(1);
 
-  //data step 1
   const [formData, setFormData] = useState({
     namaLengkap: '',
     email: '',
@@ -17,11 +16,17 @@ export default function RegisterPage() {
     konfirmasiPassword: '',
   });
 
-  //file upload
   const [ktpFile, setKtpFile] = useState(null);
   const [kkFile, setKkFile] = useState(null);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Popup email sudah terdaftar
+  const [showEmailPopup, setShowEmailPopup] = useState(false);
+  const [emailPopupMsg, setEmailPopupMsg] = useState('');
+
+  // Email yang sudah terdaftar
+  const registeredEmails = ['nasabah@insurtech.com', 'admin@insurtech.com'];
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -51,12 +56,19 @@ export default function RegisterPage() {
       setErrors(newErrors);
       return;
     }
+
+    // Cek apakah email sudah terdaftar
+    if (registeredEmails.includes(formData.email.toLowerCase())) {
+      setEmailPopupMsg(`Email ${formData.email} sudah digunakan. Silakan gunakan email lain atau masuk ke akun Anda.`);
+      setShowEmailPopup(true);
+      setTimeout(() => setShowEmailPopup(false), 3000);
+      return;
+    }
+
     setStep(2);
   };
 
-  const handleBack = () => {
-    setStep(1);
-  };
+  const handleBack = () => setStep(1);
 
   const handleFileChange = (e, type) => {
     const file = e.target.files[0];
@@ -86,32 +98,24 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
+
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800 text-center">Daftar Akun</h1>
-          {/* Step indicator */}
           <div className="flex items-center justify-center gap-4 mt-4">
-            {/* Step 1 - jika sudah selesai (step===2) tampilkan centang, jika aktif tampilkan angka 1 */}
             <div className={`flex items-center ${step === 2 ? 'text-green-600' : step === 1 ? 'text-sky-900' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                step === 2 
-                  ? 'bg-green-500 text-white' 
-                  : step === 1 
-                  ? 'bg-sky-900 text-white' 
-                  : 'bg-gray-200 text-gray-500'
+                step === 2 ? 'bg-green-500 text-white' : step === 1 ? 'bg-sky-900 text-white' : 'bg-gray-200 text-gray-500'
               }`}>
                 {step === 2 ? <FaCheckCircle className="text-white text-sm" /> : 1}
               </div>
               <span className="ml-2 text-sm font-medium">Data Diri</span>
             </div>
             <div className="w-12 h-px bg-gray-300"></div>
-            {/* Step 2 */}
             <div className={`flex items-center ${step === 2 ? 'text-sky-900' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
                 step === 2 ? 'bg-sky-900 text-white' : 'bg-gray-200 text-gray-500'
-              }`}>
-                2
-              </div>
+              }`}>2</div>
               <span className="ml-2 text-sm font-medium">Dokumen</span>
             </div>
           </div>
@@ -120,7 +124,6 @@ export default function RegisterPage() {
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
           {step === 1 ? (
-            // Step 1: Identitas Pribadi (tidak berubah)
             <div>
               <div className="mb-6 flex items-start gap-3">
                 <FaUserCircle className="text-sky-900 text-3xl mt-1" />
@@ -132,107 +135,57 @@ export default function RegisterPage() {
               <form className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                  <input
-                    type="text"
-                    name="namaLengkap"
-                    value={formData.namaLengkap}
-                    onChange={handleChange}
-                    placeholder="Nama Lengkap"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                  />
+                  <input type="text" name="namaLengkap" value={formData.namaLengkap} onChange={handleChange} placeholder="Nama Lengkap"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
                   {errors.namaLengkap && <p className="text-red-500 text-xs mt-1">{errors.namaLengkap}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="nama@gmail.com"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                  />
+                  <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="nama@gmail.com"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
                   {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">No. Telepon</label>
-                  <input
-                    type="tel"
-                    name="noTelepon"
-                    value={formData.noTelepon}
-                    onChange={handleChange}
-                    placeholder="+62 8xx xxxx xxxx"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                  />
+                  <input type="tel" name="noTelepon" value={formData.noTelepon} onChange={handleChange} placeholder="+62 8xx xxxx xxxx"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
                   {errors.noTelepon && <p className="text-red-500 text-xs mt-1">{errors.noTelepon}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
-                  <input
-                    type="date"
-                    name="tanggalLahir"
-                    value={formData.tanggalLahir}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                  />
+                  <input type="date" name="tanggalLahir" value={formData.tanggalLahir} onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
                   {errors.tanggalLahir && <p className="text-red-500 text-xs mt-1">{errors.tanggalLahir}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Alamat</label>
-                  <textarea
-                    name="alamat"
-                    value={formData.alamat}
-                    onChange={handleChange}
-                    rows="2"
-                    placeholder="Alamat Lengkap"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                  />
+                  <textarea name="alamat" value={formData.alamat} onChange={handleChange} rows="2" placeholder="Alamat Lengkap"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
                   {errors.alamat && <p className="text-red-500 text-xs mt-1">{errors.alamat}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Password</label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="•••"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                  />
+                  <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="•••"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
                   {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
-                  <input
-                    type="password"
-                    name="konfirmasiPassword"
-                    value={formData.konfirmasiPassword}
-                    onChange={handleChange}
-                    placeholder="•••"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                  />
+                  <input type="password" name="konfirmasiPassword" value={formData.konfirmasiPassword} onChange={handleChange} placeholder="•••"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
                   {errors.konfirmasiPassword && <p className="text-red-500 text-xs mt-1">{errors.konfirmasiPassword}</p>}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="w-auto px-6 bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition mx-auto block"
-                >
+                <button type="button" onClick={handleNext}
+                  className="w-auto px-6 bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition mx-auto block">
                   Lanjut
                 </button>
                 <p className="text-center text-sm text-gray-600 mt-3">
                   Sudah punya akun?{' '}
-                  <button
-                    onClick={() => navigate('/login')}
-                    className="text-sky-900 font-semibold hover:underline"
-                  >
-                    Masuk
-                  </button>
+                  <button onClick={() => navigate('/login')} className="text-sky-900 font-semibold hover:underline">Masuk</button>
                 </p>
               </form>
             </div>
           ) : (
-            // Step 2: Upload Dokumen
             <div>
               <div className="mb-6 flex items-start gap-3">
                 <div>
@@ -244,13 +197,7 @@ export default function RegisterPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Upload KTP</label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-sky-500 transition">
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      onChange={(e) => handleFileChange(e, 'ktp')}
-                      className="hidden"
-                      id="ktp-upload"
-                    />
+                    <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'ktp')} className="hidden" id="ktp-upload" />
                     <label htmlFor="ktp-upload" className="cursor-pointer flex flex-col items-center">
                       <FaUpload className="text-gray-400 text-2xl mb-2" />
                       <span className="text-sm text-gray-500">Foto atau scan KTP yang jelas</span>
@@ -262,13 +209,7 @@ export default function RegisterPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Upload Kartu Keluarga</label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-sky-500 transition">
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      onChange={(e) => handleFileChange(e, 'kk')}
-                      className="hidden"
-                      id="kk-upload"
-                    />
+                    <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'kk')} className="hidden" id="kk-upload" />
                     <label htmlFor="kk-upload" className="cursor-pointer flex flex-col items-center">
                       <FaUpload className="text-gray-400 text-2xl mb-2" />
                       <span className="text-sm text-gray-500">Foto atau scan Kartu Keluarga</span>
@@ -278,33 +219,17 @@ export default function RegisterPage() {
                   {kkFile && <p className="text-xs text-green-600 mt-1">✓ {kkFile.name}</p>}
                 </div>
                 <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="terms"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                    className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded mt-1"
-                  />
+                  <input type="checkbox" id="terms" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded mt-1" />
                   <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
                     Saya menyetujui <a href="#" className="text-sky-900 font-medium">Syarat & Ketentuan serta Kebijakan Privasi InsurTech</a>
                   </label>
                 </div>
-
-                {/* ✅ PERUBAHAN: Tombol Daftar di atas, Kembali di bawah dengan ikon panah */}
                 <div className="flex flex-col gap-2 pt-2">
-                  <button
-                    type="submit"
-                    className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
-                  >
-                    Daftar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleBack}
-                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    <FaArrowLeft size={16} />
-                    Kembali
+                  <button type="submit" className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition">Daftar</button>
+                  <button type="button" onClick={handleBack}
+                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
+                    <FaArrowLeft size={16} /> Kembali
                   </button>
                 </div>
               </form>
@@ -312,6 +237,24 @@ export default function RegisterPage() {
           )}
         </div>
       </div>
+
+      {/* POPUP EMAIL SUDAH TERDAFTAR */}
+      {showEmailPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="text-center">
+              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">Email Sudah Terdaftar</h3>
+              <p className="text-gray-600 text-sm mt-2">{emailPopupMsg}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

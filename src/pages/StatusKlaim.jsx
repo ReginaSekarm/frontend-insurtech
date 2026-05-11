@@ -57,7 +57,7 @@ export default function StatusKlaim() {
             className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden"
           >
             <div className="p-5 space-y-4">
-              {/* Baris 1: Ikon + Jenis Asuransi (kiri) dan Status (kanan) */}
+              {/* Ikon Jenis Asuransi  dan Status  */}
               <div className="flex justify-between items-start">
                 <div className="flex gap-4 items-start">
                   <div className="text-3xl mt-1">{claim.icon}</div>
@@ -79,7 +79,7 @@ export default function StatusKlaim() {
                 </p>
               </div>
 
-              {/* Baris 2: Tanggal Pengajuan (kiri) dan Jumlah Klaim (kanan) */}
+              {/* Tanggal Pengajuan dan Jumlah Klaim  */}
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-black font-semibold text-sm">TANGGAL PENGAJUAN</p>
@@ -91,7 +91,7 @@ export default function StatusKlaim() {
                 </div>
               </div>
 
-              {/* Baris 3: Tanggal Pencairan - sekarang selalu biru (kecuali DITOLAK tetap strip) */}
+              {/* Tanggal Pencairan  */}
               <div>
                 <p className="text-black font-semibold text-sm">TANGGAL PENCAIRAN</p>
                 {claim.status === 'DITOLAK' ? (
@@ -107,7 +107,7 @@ export default function StatusKlaim() {
                 )}
               </div>
 
-              {/* Tombol Unduh PDF - Full width */}
+              {/* Tombol Unduh PDF */}
               <div className="pt-2">
                 <button
                   onClick={() => handleDownload(claim.noPolis)}

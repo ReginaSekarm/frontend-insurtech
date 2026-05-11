@@ -45,7 +45,7 @@ export default function PolisSaya() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header: Judul di kiri, ikon search di kanan */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Polis Saya</h1>
         <button
@@ -63,7 +63,7 @@ export default function PolisSaya() {
         </span>
       </div>
 
-      {/* Input pencarian muncul jika showSearch true */}
+      {/* Input pencarian */}
       {showSearch && (
         <div className="relative">
           <input
@@ -82,9 +82,9 @@ export default function PolisSaya() {
       <div className="space-y-4">
         {filteredPolis.map((polis) => (
           <div key={polis.id} className="space-y-2">
-            {/* Card Informasi Polis dengan ikon di kiri */}
+            {/* Card Informasi Polis */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 flex items-start gap-4">
-              {/* Ikon besar di kiri */}
+              {/* Ikon di kiri */}
               <div className="text-3xl mt-1">{polis.icon}</div>
               {/* Detail polis */}
               <div className="flex-1">

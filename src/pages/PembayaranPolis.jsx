@@ -14,13 +14,15 @@ export default function PembayaranPolis() {
   };
 
   const handleSimpanQR = () => {
-   
     alert('QR Code disimpan (simulasi).');
-    
   };
 
   const handleKembali = () => {
-    navigate(-1); 
+    navigate(-1);
+  };
+
+  const handleLihatPolis = () => {
+    navigate('/polis-saya');
   };
 
   return (
@@ -72,6 +74,14 @@ export default function PembayaranPolis() {
           >
             <FaDownload size={16} />
             Simpan Kode QR
+          </button>
+
+          {/* Tombol Lihat Polis Saya */}
+          <button
+            onClick={handleLihatPolis}
+            className="w-full bg-sky-950 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition"
+          >
+            Lihat Polis Saya
           </button>
         </div>
       </div>

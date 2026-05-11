@@ -1,5 +1,4 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaArrowLeft } from 'react-icons/fa';
 import { FaHome } from 'react-icons/fa';
 
 export default function BayarPremi() {
@@ -25,24 +24,24 @@ export default function BayarPremi() {
     );
   }
 
-  const biayaAdmin = 2500;
+  
   const diskon = 0;
-  const totalBayar = (premi || 0) + biayaAdmin - diskon;
+  const totalBayar = (premi || 0) - diskon;
 
   const handleBayarNow = () => {
-  if (!jenis || !noPolis) {
-    alert('Data polis tidak lengkap');
-    return;
-  }
-  const transactionId = `NMD-ID${Date.now()}${Math.floor(Math.random() * 1000)}`;
-  navigate('/pembayaran-premi', {
-    state: {
-      jenis: jenis,
-      noPolis: noPolis,
-      total: totalBayar,
-      transactionId: transactionId,
-    },
-  });
+    if (!jenis || !noPolis) {
+      alert('Data polis tidak lengkap');
+      return;
+    }
+    const transactionId = `NMD-ID${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    navigate('/pembayaran-premi', {
+      state: {
+        jenis: jenis,
+        noPolis: noPolis,
+        total: totalBayar,
+        transactionId: transactionId,
+      },
+    });
   };
 
   return (
@@ -55,13 +54,13 @@ export default function BayarPremi() {
         </div>
 
         <div className="p-5 space-y-5">
-            <div className="border-b pb-3 flex items-center gap-3">
-                <FaHome className="text-blue-300 text-3xl" />
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-800">{jenis}</h2>
-                    <p className="text-sm text-gray-500">No. Polis: {noPolis}</p>
-                </div>
-                </div>
+          <div className="border-b pb-3 flex items-center gap-3">
+            <FaHome className="text-blue-300 text-3xl" />
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">{jenis}</h2>
+              <p className="text-sm text-gray-500">No. Polis: {noPolis}</p>
+            </div>
+          </div>
 
           <div className="text-center">
             <p className="text-gray-500 text-sm">Total premi yang harus dibayar bulan ini</p>
@@ -84,7 +83,6 @@ export default function BayarPremi() {
             <h3 className="font-semibold text-gray-700 text-sm">RINGKASAN PEMBAYARAN</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-600">Premi</span><span>Rp {(premi || 0).toLocaleString('id-ID')}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Biaya admin</span><span>Rp {biayaAdmin.toLocaleString('id-ID')}</span></div>
               <div className="flex justify-between"><span className="text-gray-600">Diskon</span><span>-Rp {diskon.toLocaleString('id-ID')}</span></div>
               <div className="flex justify-between pt-2 border-t font-semibold"><span>Total bayar</span><span className="font-bold text-sky-900">Rp {totalBayar.toLocaleString('id-ID')}</span></div>
             </div>

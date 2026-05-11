@@ -1,74 +1,120 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function UbahTelepon() {
   const navigate = useNavigate();
   
-  // Data dummy (bisa diambil dari state global / localStorage)
-  const [currentPhone, setCurrentPhone] = useState('+62 812-3456-7890');
+  // State untuk input
   const [newPhone, setNewPhone] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [confirmPhone, setConfirmPhone] = useState('');
+  
+  // State untuk toggle lihat nomor
+  const [showNumber, setShowNumber] = useState(false);
+  const [showConfirmNumber, setShowConfirmNumber] = useState(false);
+  
+  // State untuk Pop-up & Error Message
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+  const [confirmError, setConfirmError] = useState('');
 
-  const validatePhone = (phone) => {
-   
-    const digits = phone.replace(/\D/g, '');
-    return digits.length >= 10;
+  // Logika Validasi
+  const validate = () => {
+    let isValid = true;
+    const isNumeric = /^[0-9]+$/.test(newPhone);
+    
+    if (!newPhone) {
+      setPhoneError('Nomor telepon baru harus diisi.');
+      isValid = false;
+    } else if (!isNumeric) {
+      setPhoneError('Nomor telepon hanya boleh berisi angka.');
+      isValid = false;
+    } else {
+      setPhoneError('');
+    }
+
+    if (confirmPhone !== newPhone) {
+      setConfirmError('Format nomor tidak valid');
+      isValid = false;
+    } else {
+      setConfirmError('');
+    }
+
+    return isValid;
   };
 
   const handleSave = () => {
-    if (!validatePhone(newPhone)) {
-      setError('Format nomor tidak valid (min. 10 digit angka)');
-      setSuccess(false);
-      return;
+    if (validate()) {
+      setShowSuccessPopup(true);
     }
-    setError('');
-    
-    setCurrentPhone(newPhone);
-    setSuccess(true);
-    
-    setTimeout(() => {
-     navigate('/profil', { state: { phoneUpdateSuccess: true } });
-    }, 2000);
   };
 
-  const handleCancel = () => {
+  const handleSuccessOk = () => {
+    setShowSuccessPopup(false);
     navigate('/profil');
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header dengan tombol back */}
-      <div className="bg-sky-950 border-b px-5 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <h1 className="text-lg font-semibold text-white">Ubah No. Telepon</h1>
+    <div className="max-w-md mx-auto space-y-6 pb-10">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
+        </button>
+        <h1 className="text-2xl font-bold text-gray-800">Ubah No. Telepon</h1>
       </div>
 
-      <div className="max-w-md mx-auto p-5 space-y-5">
-        {/* Nomor telepon saat ini (readonly) */}
-        <div className="bg-white p-4 rounded-xl shadow-sm">
-          <label className="block text-xs text-gray-500 mb-1">No. Telepon Saat Ini</label>
-          <p className="text-gray-800 font-medium">{currentPhone}</p>
+      <div className="bg-white rounded-xl shadow-md p-5 space-y-5">
+        
+        {/* Nomor Telepon Baru */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">No. Telepon Baru</label>
+          <div className="relative">
+            <input
+              type={showNumber ? 'text' : 'password'}
+              value={newPhone}
+              onChange={(e) => {
+                setNewPhone(e.target.value);
+                if (phoneError) setPhoneError('');
+              }}
+              className={`w-full border ${phoneError ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500`}
+              placeholder="+62 8xx-xxxx-xxxx"
+            />
+            <button
+              type="button"
+              onClick={() => setShowNumber(!showNumber)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+            >
+              {showNumber ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+            </button>
+          </div>
+          {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
         </div>
 
-        {/* Input nomor telepon baru */}
-        <div className="bg-white p-4 rounded-xl shadow-sm">
-          <label className="block text-xs text-gray-500 mb-1">No. Telepon Baru</label>
-          <input
-            type="tel"
-            value={newPhone}
-            onChange={(e) => {
-              setNewPhone(e.target.value);
-              setError('');
-              setSuccess(false);
-            }}
-            placeholder="+62 8xx-xxxx-xxxx"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-gray-400 mt-1">Masukkan nomor yang aktif!</p>
-          {error && (
-            <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
-              {error}
-            </div>
+        {/* Konfirmasi No. Telepon Baru  */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Konfirmasi No. Telepon Baru</label>
+          <div className="relative">
+            <input
+              type={showConfirmNumber ? 'text' : 'password'}
+              value={confirmPhone}
+              onChange={(e) => {
+                setConfirmPhone(e.target.value);
+                if (confirmError) setConfirmError('');
+              }}
+              className={`w-full border ${confirmError ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500`}
+              placeholder="+62 8xx-xxxx-xxxx"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmNumber(!showConfirmNumber)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+            >
+              {showConfirmNumber ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+            </button>
+          </div>
+          {confirmError && <p className="text-red-500 text-xs mt-1">{confirmError}</p>}
+          {!confirmError && confirmPhone && newPhone === confirmPhone && (
+            <p className="text-green-600 text-xs mt-1">Nomor telepon cocok</p>
           )}
         </div>
 
@@ -76,18 +122,38 @@ export default function UbahTelepon() {
         <div className="flex gap-3 pt-2">
           <button
             onClick={handleSave}
-            className="flex-1 bg-sky-950 hover:bg-sky-800 text-white font-semibold py-2 rounded-xl transition">
-            Simpan Perubahan
+            className="flex-1 bg-sky-950 hover:bg-sky-800 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Simpan
           </button>
           <button
-            onClick={handleCancel}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-xl transition">
-            <Link to="/profil" className="text-gray-600 hover:text-gray-900">
-              Batal
-            </Link>
+            onClick={() => navigate(-1)}
+            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition"
+          >
+            Batal
           </button>
         </div>
       </div>
+
+      {/* Popup Success */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5">
+            <div className="text-center">
+              <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">Berhasil Diperbarui</h3>
+              <p className="text-gray-600 text-sm mt-2">Nomor telepon Anda telah berhasil diganti.</p>
+              <button onClick={handleSuccessOk} className="mt-4 bg-sky-950 text-white px-6 py-2 rounded-lg font-medium w-full shadow-md">
+                Oke, Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

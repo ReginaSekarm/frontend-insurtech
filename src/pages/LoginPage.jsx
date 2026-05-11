@@ -6,7 +6,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('nasabah');
-  const [error, setError] = useState(''); // tidak dipakai, tapi tidak dihapus
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -17,7 +17,6 @@ export default function LoginPage() {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
 
-  // State untuk popup error login
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorPopupMessage, setErrorPopupMessage] = useState('');
 
@@ -27,52 +26,38 @@ export default function LoginPage() {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  e.preventDefault();
+  setIsLoading(true);
 
-    setTimeout(() => {
-      const user = dummyUsers[role];
+  setTimeout(() => {
+    let user = dummyUsers[role];
+    if (email === user.email && password === user.password) {
+    } else {
+      const otherRole = role === 'nasabah' ? 'admin' : 'nasabah';
+      user = dummyUsers[otherRole];
       if (email === user.email && password === user.password) {
-        if (role === 'admin') {
-          navigate('/admin-dashboard');
-        } else {
-          navigate('/dashboard');
-        }
+        navigate(user.dashboard);
       } else {
         setErrorPopupMessage('Email atau password salah. Periksa kembali email dan password Anda, lalu coba lagi.');
         setShowErrorPopup(true);
       }
-      setIsLoading(false);
-    }, 1000);
-  };
+    }
+    setIsLoading(false);
+  }, 1000);
+};
 
   const handleResetPassword = (e) => {
     e.preventDefault();
     setResetError('');
     setResetSuccess('');
 
-    if (!resetEmail) {
-      setResetError('Email harus diisi.');
-      return;
-    }
-    if (!newPassword || !confirmPassword) {
-      setResetError('Password baru dan konfirmasi harus diisi.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setResetError('Password baru dan konfirmasi tidak cocok.');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setResetError('Password minimal 6 karakter.');
-      return;
-    }
+    if (!resetEmail) { setResetError('Email harus diisi.'); return; }
+    if (!newPassword || !confirmPassword) { setResetError('Password baru dan konfirmasi harus diisi.'); return; }
+    if (newPassword !== confirmPassword) { setResetError('Password baru dan konfirmasi tidak cocok.'); return; }
+    if (newPassword.length < 6) { setResetError('Password minimal 6 karakter.'); return; }
 
     const emailExists = Object.values(dummyUsers).some(user => user.email === resetEmail);
-    if (!emailExists) {
-      setResetError('Email tidak terdaftar.');
-      return;
-    }
+    if (!emailExists) { setResetError('Email tidak terdaftar.'); return; }
 
     setTimeout(() => {
       setResetSuccess('Password berhasil direset. Silakan login dengan password baru.');
@@ -97,65 +82,38 @@ export default function LoginPage() {
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Alamat Email
-            </label>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Alamat Email</label>
             <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="email" name="email" type="email" autoComplete="email" required
+              value={email} onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="contoh@email.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Kata Sandi
-            </label>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Kata Sandi</label>
             <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              id="password" name="password" type="password" autoComplete="current-password" required
+              value={password} onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
-          {/* Error tidak ditampilkan inline lagi, sudah diganti popup */}
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <input
-                id="remember"
-                name="remember"
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember" className="ml-2 block text-sm text-gray-700">
-                Ingat saya
-              </label>
+              <input id="remember" name="remember" type="checkbox" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+              <label htmlFor="remember" className="ml-2 block text-sm text-gray-700">Ingat saya</label>
             </div>
             <div className="text-sm">
-              <a 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); setShowForgotPopup(true); }}
-                className="font-medium text-sky-950 hover:text-sky-700"
-              >
+              <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotPopup(true); }} className="font-medium text-sky-950 hover:text-sky-700">
                 Lupa Password?
               </a>
             </div>
           </div>
 
           <button
-            type="submit"
-            disabled={isLoading}
+            type="submit" disabled={isLoading}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-900 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Memproses...' : 'Masuk'}
@@ -164,9 +122,7 @@ export default function LoginPage() {
 
         <div className="text-center text-sm">
           <span className="text-gray-600">Belum punya akun? </span>
-          <Link to="/register" className="font-medium text-sky-900 hover:text-sky-700">
-            Daftar Sekarang
-          </Link>
+          <Link to="/register" className="font-medium text-sky-900 hover:text-sky-700">Daftar Sekarang</Link>
         </div>
 
         <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-500 text-center">
@@ -180,15 +136,9 @@ export default function LoginPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md relative p-6">
             <button
-              onClick={() => {
-                setShowForgotPopup(false);
-                setResetError('');
-                setResetSuccess('');
-              }}
+              onClick={() => { setShowForgotPopup(false); setResetError(''); setResetSuccess(''); }}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold"
-            >
-              ×
-            </button>
+            >×</button>
 
             <div className="flex flex-col items-center justify-center mb-6">
               <div className="bg-gray-200 p-3 rounded-xl mb-3">
@@ -202,55 +152,25 @@ export default function LoginPage() {
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
+                <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)}
                   className="bg-gray-200 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="nama@gmail.com"
-                  required
-                />
+                  placeholder="nama@gmail.com" required />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700">Masukkan Password Baru</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                   className="bg-gray-200 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="......"
-                  required
-                />
+                  placeholder="......" required />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700">Konfirmasi Password Baru</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                   className="bg-gray-200 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="......"
-                  required
-                />
+                  placeholder="......" required />
               </div>
-
-              {resetError && (
-                <div className="bg-red-50 border-l-4 border-red-500 p-2 text-sm text-red-700">
-                  {resetError}
-                </div>
-              )}
-              {resetSuccess && (
-                <div className="bg-green-50 border-l-4 border-green-500 p-2 text-sm text-green-700">
-                  {resetSuccess}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="w-auto px-6 mt-4 bg-sky-900 hover:bg-gray-400 text-white font-semibold py-2 rounded-md transition mx-auto block"
-              >
+              {resetError && <div className="bg-red-50 border-l-4 border-red-500 p-2 text-sm text-red-700">{resetError}</div>}
+              {resetSuccess && <div className="bg-green-50 border-l-4 border-green-500 p-2 text-sm text-green-700">{resetSuccess}</div>}
+              <button type="submit" className="w-auto px-6 mt-4 bg-sky-900 hover:bg-gray-400 text-white font-semibold py-2 rounded-md transition mx-auto block">
                 Reset Password
               </button>
             </form>
@@ -258,11 +178,10 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* POPUP ERROR LOGIN (baru sesuai gambar) */}
+      {/* POPUP ERROR LOGIN */}
       {showErrorPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm relative p-6">
-          
             <div className="text-center">
               <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,16 +190,11 @@ export default function LoginPage() {
               </div>
               <h3 className="text-lg font-bold text-gray-800">Email atau password salah</h3>
               <p className="text-gray-600 text-sm mt-2">{errorPopupMessage}</p>
-              <button
-                onClick={() => setShowErrorPopup(false)}
-                className="mt-4 bg-sky-900 hover:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium w-full"
-              >
-                Coba Lagi
-              </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

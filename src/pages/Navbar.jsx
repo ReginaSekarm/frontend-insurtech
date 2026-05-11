@@ -32,12 +32,6 @@ export default function Navbar() {
             {/* <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">3</span> */}
           </Link>
 
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 font-medium transition"
-          >
-            Logout
-          </button>
         </div>
       </nav>
 
