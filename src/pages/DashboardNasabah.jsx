@@ -73,16 +73,23 @@ export default function DashboardNasabah() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          {[
-            { value: stats.totalPolis, label: 'Polis' },
-            { value: stats.totalKlaim, label: 'Klaim' },
-            { value: stats.tunggakan, label: 'Tunggakan' },
-          ].map(({ value, label }) => (
-            <div key={label} className="bg-white/15 rounded-xl px-3 py-3">
-              <p className="text-white text-2xl font-bold">{value}</p>
-              <p className="text-white/70 text-xs mt-1">{label}</p>
+          {/* Polis */}
+          <div className="bg-white/15 rounded-xl px-3 py-3">
+            <p className="text-white text-2xl font-bold">{stats.totalPolis}</p>
+            <p className="text-white/70 text-xs mt-1">Polis</p>
+          </div>
+          {/* Klaim */}
+          <div className="bg-white/15 rounded-xl px-3 py-3">
+            <p className="text-white text-2xl font-bold">{stats.totalKlaim}</p>
+            <p className="text-white/70 text-xs mt-1">Klaim</p>
+          </div>
+          {/* Tunggakan (Bisa diklik) */}
+          <Link to="/tunggakan" className="block">
+            <div className="bg-white/15 rounded-xl px-3 py-3 hover:bg-white/25 transition cursor-pointer">
+              <p className="text-white text-2xl font-bold">{stats.tunggakan}</p>
+              <p className="text-white/70 text-xs mt-1">Tunggakan</p>
             </div>
-          ))}
+          </Link>
         </div>
       </div>
 

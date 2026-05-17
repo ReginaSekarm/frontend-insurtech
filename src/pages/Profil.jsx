@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { FaUserCircle, FaIdCard, FaFileAlt, FaKey, FaSignOutAlt, FaHome, FaFileInvoice, FaShoppingCart, FaClipboardList, FaUser } from 'react-icons/fa';
+import { FaUserCircle, FaIdCard, FaFileAlt, FaKey, FaSignOutAlt, FaHome, FaFileInvoice, FaShoppingCart, FaClipboardList, FaUser, FaLock } from 'react-icons/fa';
 
 export default function Profil() {
   const navigate = useNavigate();
@@ -103,7 +103,7 @@ export default function Profil() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <Link to="/ubah-password" className="w-full flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition">
             <div className="flex items-center gap-3">
-              <FaKey className="text-gray-500" />
+              <FaLock className="text-gray-500" />
               <span className="text-gray-700">Ubah Password</span>
             </div>
           </Link>

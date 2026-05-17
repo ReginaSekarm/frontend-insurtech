@@ -77,6 +77,26 @@ export default function ProdukAsuransi() {
       setTimeout(() => setErrorPopup({ show: false, message: '' }), 3000);
       return;
     }
+    
+    // Simpan polis ke localStorage
+    const kategoriMap = {
+      Kesehatan: 'Asuransi Kesehatan',
+      Properti: 'Asuransi Properti',
+      Kendaraan: 'Asuransi Kendaraan',
+      Pendidikan: 'Asuransi Pendidikan',
+    };
+    const jenisPolis = kategoriMap[activeCategory] || selectedProduct.name;
+    const newPolis = {
+      id: Date.now(),
+      jenis: jenisPolis,
+      noPolis: `POL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      premi: hitungPremi(),
+      premiFormatted: `Rp ${hitungPremi().toLocaleString('id-ID')}`,
+      periode: '/ bulan',
+    };
+    const existing = JSON.parse(localStorage.getItem('userPolis') || '[]');
+    existing.push(newPolis);
+    localStorage.setItem('userPolis', JSON.stringify(existing));
 
     const transactionId = `NMIID-ID${Date.now()}${Math.floor(Math.random() * 1000)}`;
     navigate('/pembayaran-polis', {

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 
 {/* USER */}
 import LandingPage from './pages/LandingPage';
@@ -20,6 +21,7 @@ import UbahNoTelepon from './pages/UbahNoTelepon';
 import UbahPassword from './pages/UbahPassword';
 import RiwayatTransaksi from './pages/RiwayatTransaksi';
 import NasabahLayout from './pages/NasabahLayout';
+import Tunggakan from './pages/Tunggakan';
 
 {/* Admin */}
 import AdminLayout from './pagesadmin/AdminLayout';
@@ -28,6 +30,7 @@ import AdminProduk from './pagesadmin/AdminProduk';
 import AdminTambahProduk from './pagesadmin/AdminTambahProduk';
 import AdminReviewKlaim from './pagesadmin/AdminReviewKlaim';
 import AdminPengguna from './pagesadmin/AdminPengguna';
+import AdminVerifikasiDokumen from './pagesadmin/AdminVerifikasiDokumen';
 
 
 function App() {
@@ -56,6 +59,7 @@ function App() {
         <Route path="/ubah-telepon" element={<UbahNoTelepon />} />
         <Route path="/ubah-password" element={<UbahPassword />} />
         <Route path="/riwayat-transaksi" element={<RiwayatTransaksi />} />
+        <Route path="/tunggakan" element={<Tunggakan />} />
         </Route>
 
         {/* Protected routes untuk Admin */}
@@ -65,7 +69,7 @@ function App() {
         <Route path="/admin-tambah-produk" element={<AdminTambahProduk />} />
         <Route path="/admin-review-klaim" element={<AdminReviewKlaim />} />
         <Route path="/admin-pengguna" element={<AdminPengguna />} />
-
+        <Route path="/admin-verifikasi-dokumen" element={<AdminVerifikasiDokumen />} />
       
           </Route>
       </Routes>

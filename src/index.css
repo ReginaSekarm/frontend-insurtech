@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply bg-amber-50;
+  }
+}
+
 /* Efek 3D untuk Gambar */
 .preserve-3d { 
   transform-style: preserve-3d; 

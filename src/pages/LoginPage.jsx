@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield } from 'lucide-react';
+// import api from '../lib/axios'; // Nonaktifkan dulu jika pakai dummy
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,45 +21,73 @@ export default function LoginPage() {
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorPopupMessage, setErrorPopupMessage] = useState('');
 
+  // Data dummy user 
   const dummyUsers = {
-    nasabah: { email: 'nasabah@insurtech.com', password: '123456', dashboard: '/dashboard' },
-    admin: { email: 'admin@insurtech.com', password: 'admin123', dashboard: '/admin-dashboard' }
+    nasabah: {
+      email: 'nasabah@insurtech.com',
+      password: '123456',
+      dashboard: '/nasabah/dashboard'
+    },
+    admin: {
+      email: 'admin@insurtech.com',
+      password: 'admin123',
+      dashboard: '/admin/dashboard'
+    }
   };
 
   const handleSubmit = (e) => {
-  e.preventDefault();
-  setIsLoading(true);
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
 
-  setTimeout(() => {
-    let user = dummyUsers[role];
-    if (email === user.email && password === user.password) {
-    } else {
-      const otherRole = role === 'nasabah' ? 'admin' : 'nasabah';
-      user = dummyUsers[otherRole];
+    setTimeout(() => {
+      let user = dummyUsers[role];
       if (email === user.email && password === user.password) {
         navigate(user.dashboard);
       } else {
-        setErrorPopupMessage('Email atau password salah. Periksa kembali email dan password Anda, lalu coba lagi.');
-        setShowErrorPopup(true);
+        // Coba role lain
+        const otherRole = role === 'nasabah' ? 'admin' : 'nasabah';
+        user = dummyUsers[otherRole];
+        if (email === user.email && password === user.password) {
+          navigate(user.dashboard);
+        } else {
+          setErrorPopupMessage('Email atau password salah. Periksa kembali email dan password Anda, lalu coba lagi.');
+          setShowErrorPopup(true);
+        }
       }
-    }
-    setIsLoading(false);
-  }, 1000);
-};
+      setIsLoading(false);
+    }, 1000);
+  };
 
   const handleResetPassword = (e) => {
     e.preventDefault();
     setResetError('');
     setResetSuccess('');
 
-    if (!resetEmail) { setResetError('Email harus diisi.'); return; }
-    if (!newPassword || !confirmPassword) { setResetError('Password baru dan konfirmasi harus diisi.'); return; }
-    if (newPassword !== confirmPassword) { setResetError('Password baru dan konfirmasi tidak cocok.'); return; }
-    if (newPassword.length < 6) { setResetError('Password minimal 6 karakter.'); return; }
+    if (!resetEmail) {
+      setResetError('Email harus diisi.');
+      return;
+    }
+    if (!newPassword || !confirmPassword) {
+      setResetError('Password baru dan konfirmasi harus diisi.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetError('Password baru dan konfirmasi tidak cocok.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setResetError('Password minimal 6 karakter.');
+      return;
+    }
 
     const emailExists = Object.values(dummyUsers).some(user => user.email === resetEmail);
-    if (!emailExists) { setResetError('Email tidak terdaftar.'); return; }
+    if (!emailExists) {
+      setResetError('Email tidak terdaftar.');
+      return;
+    }
 
+    // Proses reset 
     setTimeout(() => {
       setResetSuccess('Password berhasil direset. Silakan login dengan password baru.');
       setResetEmail('');
@@ -71,6 +100,9 @@ export default function LoginPage() {
     }, 500);
   };
 
+  // Jika nanti ingin pindah ke API, buat fungsi handleLoginAPI
+  // const handleLoginAPI = async (e) => { ... }
+
   return (
     <div className="min-h-screen bg-gray-300 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 space-y-6">
@@ -82,7 +114,7 @@ export default function LoginPage() {
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Alamat Email</label>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
             <input
               id="email" name="email" type="email" autoComplete="email" required
               value={email} onChange={(e) => setEmail(e.target.value)}
@@ -146,7 +178,7 @@ export default function LoginPage() {
               </div>
               <h2 className="text-3xl font-extrabold text-sky-950">InsurTech</h2>
               <p className="mt-1 text-sm text-gray-600">Platform Asuransi Digital</p>
-              <p className="text-xs text-gray-500">Silakan masuk ke akun Anda</p>
+              <p className="text-xs text-gray-500">Reset Password</p>
             </div>
 
             <form onSubmit={handleResetPassword} className="space-y-4">
@@ -190,11 +222,16 @@ export default function LoginPage() {
               </div>
               <h3 className="text-lg font-bold text-gray-800">Email atau password salah</h3>
               <p className="text-gray-600 text-sm mt-2">{errorPopupMessage}</p>
+              <button
+                onClick={() => setShowErrorPopup(false)}
+                className="mt-4 px-4 py-2 bg-sky-900 text-white rounded-md hover:bg-gray-400"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

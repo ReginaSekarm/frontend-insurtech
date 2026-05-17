@@ -20,12 +20,13 @@ export default function AdminLayout() {
     '/admin-produk': 'Manajemen Produk',
     '/admin-review-klaim': 'Review Klaim',
     '/admin-pengguna': 'Pengguna',
+    '/admin-verifikasi-dokumen': 'Verifikasi Dokumen',
   };
-  const currentTitle = pageTitles[location.pathname] || 'Dashboard';
+  const currentTitle = pageTitles[location.pathname] || 'Pengguna';
 
   // Hide Navbar di halaman Review Klaim
-  const hideSearch = location.pathname === '/admin-review-klaim';
-
+  const hideSearch = location.pathname === '/admin-review-klaim' || location.pathname === '/admin-tambah-produk' || location.pathname === '/admin-pengguna' || location.pathname === '/admin-verifikasi-dokumen';
+  
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
 
@@ -88,7 +89,7 @@ export default function AdminLayout() {
             <div className="relative ml-8">
               <input
                 type="text"
-                placeholder="Cari data Produk....."
+                placeholder="Cari....."
                 className="pl-4 pr-9 py-1.5 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 w-[550px]"
               />
               <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaSearch, FaHome, FaHeartbeat, FaCar, FaGraduationCap } from 'react-icons/fa';
 
@@ -6,36 +6,29 @@ export default function PolisSaya() {
   const navigate = useNavigate();
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [polisList, setPolisList] = useState([]);
 
-  const polisList = [
-    {
-      id: 1,
-      jenis: 'Asuransi Properti',
-      noPolis: 'AJ-20240101',
-      premi: 200000,
-      premiFormatted: 'Rp 200.000',
-      periode: '/ bulan',
-      icon: <FaHome className="text-blue-300" />,
-    },
-    {
-      id: 2,
-      jenis: 'Asuransi Kesehatan',
-      noPolis: 'AK-20240215',
-      premi: 150000,
-      premiFormatted: 'Rp 150.000',
-      periode: '/ bulan',
-      icon: <FaHeartbeat className="text-red-500" />,
-    },
-    {
-      id: 3,
-      jenis: 'Asuransi Kendaraan',
-      noPolis: 'AV-20231201',
-      premi: 300000,
-      premiFormatted: 'Rp 300.000',
-      periode: '/ bulan',
-      icon: <FaCar className="text-amber-300" />,
-    },
-  ];
+  const getIconByJenis = (jenis) => {
+    if (jenis.includes('Kesehatan')) return <FaHeartbeat className="text-red-500 text-3xl" />;
+    if (jenis.includes('Properti')) return <FaHome className="text-blue-300 text-3xl" />;
+    if (jenis.includes('Kendaraan')) return <FaCar className="text-amber-300 text-3xl" />;
+    if (jenis.includes('Pendidikan')) return <FaGraduationCap className="text-zinc-600 text-3xl" />;
+    return <FaHome className="text-gray-400 text-3xl" />;
+  };
+
+  useEffect(() => {
+    const stored = localStorage.getItem('userPolis');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      const withIcons = parsed.map(polis => ({
+        ...polis,
+        icon: getIconByJenis(polis.jenis)
+      }));
+      setPolisList(withIcons);
+    } else {
+      setPolisList([]);
+    }
+  }, []);
 
   const filteredPolis = polisList.filter(
     (polis) =>
@@ -78,15 +71,13 @@ export default function PolisSaya() {
         </div>
       )}
 
-      {/* Daftar Polis hasil filter */}
+      {/* Daftar Polis */}
       <div className="space-y-4">
         {filteredPolis.map((polis) => (
           <div key={polis.id} className="space-y-2">
             {/* Card Informasi Polis */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 flex items-start gap-4">
-              {/* Ikon di kiri */}
               <div className="text-3xl mt-1">{polis.icon}</div>
-              {/* Detail polis */}
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-sky-900">{polis.jenis}</h3>
                 <p className="text-sm text-gray-500 mt-1">No. Polis: {polis.noPolis}</p>
@@ -99,7 +90,7 @@ export default function PolisSaya() {
               </div>
             </div>
 
-            {/* Card Tombol Aksi */}
+            {/* Tombol Aksi */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3">
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link
@@ -109,7 +100,7 @@ export default function PolisSaya() {
                 >
                   + Ajukan Klaim
                 </Link>
-               <Link
+                <Link
                   to="/bayar-premi"
                   state={{
                     jenis: polis.jenis,
@@ -118,7 +109,7 @@ export default function PolisSaya() {
                     premiFormatted: polis.premiFormatted,
                     periode: polis.periode
                   }}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 shadow-md bg-white hover:bg-gray-300 text-sky-950 font-medium rounded-lg transition shadow-sm"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 shadow-md bg-white hover:bg-gray-300 text-sky-950 font-medium rounded-lg transition"
                 >
                   Bayar Premi
                 </Link>
@@ -129,7 +120,8 @@ export default function PolisSaya() {
 
         {filteredPolis.length === 0 && (
           <div className="text-center py-12 bg-white rounded-xl shadow">
-            <p className="text-gray-500">Tidak ada polis yang cocok.</p>
+            <p className="text-gray-500">Belum ada polis. Silakan beli produk terlebih dahulu.</p>
+            <Link to="/produk" className="text-sky-600 hover:underline mt-2 inline-block">Beli produk sekarang</Link>
           </div>
         )}
       </div>

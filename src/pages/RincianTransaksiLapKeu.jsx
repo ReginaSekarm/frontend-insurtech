@@ -1,45 +1,6 @@
-import { useParams, Link } from 'react-router-dom';
-import { FaPaperPlane } from 'react-icons/fa';
-import { Shield, ArrowLeft } from 'lucide-react';
-
-const detailTransaksiMap = {
-  1: {
-    namaProduk: 'Asuransi Kesehatan',
-    totalDibayar2026: 800000,
-    jumlahPembayaran: 4,
-    noPolis: '#POL-2026-0312',
-    premiPerBulan: 200000,
-    statusPolis: 'Aktif',
-    riwayat: [
-      { tanggal: '11 Maret 2026', waktu: '09:14 WIB', nominal: 200000, status: 'Lunas' },
-      { tanggal: '11 Februari 2026', waktu: '10:04 WIB', nominal: 200000, status: 'Lunas' },
-      { tanggal: '11 Januari 2026', waktu: '08:45 WIB', nominal: 200000, status: 'Lunas' },
-      { tanggal: '11 April 2026', waktu: '09:50 WIB', nominal: 200000, status: 'Lunas' },
-    ],
-  },
-  2: {
-    namaProduk: 'Klaim Kesehatan',
-    totalDibayar2026: 1500000,
-    jumlahPembayaran: 1,
-    noPolis: '#CLAIM-2025-001',
-    premiPerBulan: null,
-    statusPolis: 'Selesai',
-    riwayat: [
-      { tanggal: '30 Februari 2025', waktu: '14:20 WIB', nominal: 1500000, status: 'Disetujui' },
-    ],
-  },
-  3: {
-    namaProduk: 'Klaim Kesehatan',
-    totalDibayar2026: 1000000,
-    jumlahPembayaran: 1,
-    noPolis: '#CLAIM-2025-002',
-    premiPerBulan: null,
-    statusPolis: 'Selesai',
-    riwayat: [
-      { tanggal: '30 Februari 2025', waktu: '11:05 WIB', nominal: 1000000, status: 'Disetujui' },
-    ],
-  },
-};
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { FaArrowLeft, FaPaperPlane, FaCar, FaHome, FaHeartbeat, FaGraduationCap } from 'react-icons/fa';
 
 const formatRupiah = (nominal) =>
   new Intl.NumberFormat('id-ID', {
@@ -48,142 +9,161 @@ const formatRupiah = (nominal) =>
     minimumFractionDigits: 0,
   }).format(nominal);
 
-export default function RincianTransaksiLapKeu() {
-  const { id } = useParams();
-  const data = detailTransaksiMap[id];
+export default function RincianKelompokTransaksi() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { group } = location.state || {};
 
-  if (!data) {
+  const [transaksiList, setTransaksiList] = useState([]);
+  const [infoPolis, setInfoPolis] = useState(null);
+
+  useEffect(() => {
+    if (!group) {
+      navigate('/laporan-keuangan');
+      return;
+    }
+
+    const stored = localStorage.getItem('userTransaksi');
+    if (stored) {
+      const allTransaksi = JSON.parse(stored);
+      const filtered = allTransaksi.filter(t => t.nama === group.nama);
+      setTransaksiList(filtered);
+
+      const transaksiPremi = filtered.find(t => t.tipe === 'premi' && t.noPolis);
+      if (transaksiPremi) {
+        setInfoPolis({
+          jenis: transaksiPremi.nama.replace('Pembayaran Premi ', ''),
+          noPolis: transaksiPremi.noPolis,
+          premiPerBulan: transaksiPremi.premiPerBulan || transaksiPremi.nominal,
+          statusPolis: transaksiPremi.statusPolis || 'Aktif',
+        });
+      } else {
+        const storedPolis = localStorage.getItem('userPolis');
+        if (storedPolis) {
+          const polisList = JSON.parse(storedPolis);
+          const polis = polisList.find(p => group.nama.includes(p.jenis));
+          if (polis) {
+            setInfoPolis({
+              jenis: polis.jenis,
+              noPolis: polis.noPolis,
+              premiPerBulan: polis.premi,
+              statusPolis: 'Aktif',
+            });
+          }
+        }
+      }
+    }
+  }, [group, navigate]);
+
+  if (!group) return null;
+  if (transaksiList.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
-          <p className="text-gray-500 text-lg">Data tidak ditemukan</p>
-          <Link to="/laporan-keuangan" className="mt-4 inline-block text-sky-700 font-semibold hover:underline">
-            Kembali ke Laporan Keuangan
-          </Link>
+          <p className="text-gray-500">Tidak ada transaksi untuk grup ini.</p>
+          <button onClick={() => navigate(-1)} className="mt-4 text-sky-600">Kembali</button>
         </div>
       </div>
     );
   }
 
-  const totalKeseluruhan = data.riwayat.reduce((sum, item) => sum + item.nominal, 0);
+  const totalDibayar = transaksiList.reduce((sum, t) => sum + t.nominal, 0);
+  const jumlahPembayaran = transaksiList.length;
 
-  const infoRows = [
-    { label: 'Jenis Polis', value: data.namaProduk },
-    { label: 'No. Polis', value: data.noPolis },
-    ...(data.premiPerBulan
-      ? [{ label: 'Premi per Bulan', value: formatRupiah(data.premiPerBulan) }]
-      : []),
-    { label: 'Status Polis', value: data.statusPolis },
-  ];
+  // Icon berdasarkan nama grup
+  let groupIcon = null;
+  if (group.nama.includes('Kendaraan')) groupIcon = <FaCar className="text-white text-2xl" />;
+  else if (group.nama.includes('Kesehatan')) groupIcon = <FaHeartbeat className="text-white text-2xl" />;
+  else if (group.nama.includes('Properti')) groupIcon = <FaHome className="text-white text-2xl" />;
+  else if (group.nama.includes('Pendidikan')) groupIcon = <FaGraduationCap className="text-white text-2xl" />;
+  else groupIcon = <Shield size={24} className="text-white" />;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* TOP HEADER */}
-      <div className="bg-gradient-to-r from-sky-950 to-sky-800 -mx-6 -mt-6 px-6 pt-6 pb-8">
-        <div className="px-4 sm:px-6 lg:px-8">
-          {/* Kembali */}
-          <Link
-            to="/laporan-keuangan"
-            className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium mb-5 transition"
-          >
-            <ArrowLeft size={16} />
-          </Link>
+    <div className="min-h-screen bg-gray-100 py-6 px-4">
+      <div className="max-w-4xl mx-auto">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 mb-4">
+          <FaArrowLeft size={16} />
+        </button>
 
-          {/* Judul + Badge */}
-          <div className="flex items-center gap-3 mb-5">
-            <div className="bg-white/20 p-2.5 rounded-xl flex-shrink-0">
-              <Shield size={22} className="text-white" strokeWidth={1.5} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-white/60 text-xs uppercase tracking-widest">Detail Transaksi</p>
-              <h1 className="text-lg sm:text-xl font-bold text-white truncate">{data.namaProduk}</h1>
+        {/* Header */}
+        <div className="bg-gradient-to-r from-sky-950 to-sky-800 rounded-2xl p-6 text-white mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-white/20 p-2 rounded-xl">{groupIcon}</div>
+            <div>
+              <h1 className="text-2xl font-bold">{group.nama}</h1>
+              <p className="text-white/60 text-sm mt-1">Ringkasan transaksi</p>
             </div>
           </div>
-
-          {/* Total Dibayar & Jumlah Pembayaran */}
-          <div className="bg-white/20 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-white/60 text-xs mb-1">Total Dibayar 2026</p>
-              <p className="text-white text-xl font-extrabold">{formatRupiah(data.totalDibayar2026)}</p>
+              <p className="text-white/60 text-xs">Total Dibayar 2026</p>
+              <p className="text-xl font-bold">{formatRupiah(totalDibayar)}</p>
             </div>
             <div className="text-right">
-              <p className="text-white/60 text-xs mb-1">Jumlah Pembayaran</p>
-              <p className="text-amber-300 text-xl font-extrabold">{data.jumlahPembayaran}x Bayar</p>
+              <p className="text-white/60 text-xs">Jumlah Pembayaran</p>
+              <p className="text-xl font-bold text-yellow-300">{jumlahPembayaran}x Bayar</p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* BODY */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Informasi Polis */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-base font-bold text-gray-800">Informasi Polis</h2>
+        {/* Informasi Polis (jika ada) */}
+        {infoPolis && (
+          <div className="bg-white rounded-2xl shadow-sm p-5 mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">Informasi Polis</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-sm">Jenis Polis</span>
+                <span className="font-medium text-gray-800">{infoPolis.jenis}</span>
               </div>
-              <div className="space-y-3">
-                {infoRows.map(({ label, value }, i) => (
-                  <div
-                    key={label}
-                    className={`flex justify-between items-center ${
-                      i < infoRows.length - 1 ? 'pb-3 border-b border-gray-100' : ''
-                    }`}
-                  >
-                    <span className="text-sm text-gray-500">{label}</span>
-                    <span className="text-sm font-semibold text-gray-800 text-right ml-4">{value}</span>
-                  </div>
-                ))}
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-sm">No. Polis</span>
+                <span className="font-medium text-gray-800">{infoPolis.noPolis}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-sm">Premi per Bulan</span>
+                <span className="font-medium text-gray-800">{formatRupiah(infoPolis.premiPerBulan)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-sm">Status Polis</span>
+                <span className="font-medium text-gray-800">{infoPolis.statusPolis}</span>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Riwayat & Total */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Riwayat Pembayaran */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-5">
-                <h2 className="text-base font-bold text-gray-800">Riwayat Pembayaran Premi</h2>
-                <span className="ml-auto bg-sky-50 text-sky-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                  {data.riwayat.length} Transaksi
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {data.riwayat.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex gap-4 p-4 bg-gray-50 rounded-xl hover:bg-sky-50 transition"
-                  >
-                    <div className="bg-gray-200 p-2.5 rounded-full flex-shrink-0 self-start">
-                      <FaPaperPlane size={18} className="text-gray-400" strokeWidth={1.5} />
+        {/* Riwayat Pembayaran Premi */}
+        <div className="bg-white rounded-2xl shadow-sm p-5">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Riwayat Pembayaran Premi</h2>
+          <div className="space-y-4">
+            {transaksiList.map((trx, idx) => (
+              <div key={idx} className="border-b border-gray-100 pb-3 last:border-0 flex gap-3">
+                {/* Ikon paper plane di kiri */}
+                <div className="mt-1">
+                  <FaPaperPlane className="text-gray-400 text-xl" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-gray-800">{trx.tanggal}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{trx.waktu || '-'}</p>
+                      <span className="inline-block text-xs text-green-700 bg-green-300 px-2 py-0.5 rounded-full mt-1">
+                        Lunas
+                      </span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <p className="text-sm font-semibold text-gray-800">{item.tanggal}</p>
-                        <span className="text-sm font-bold text-red-500">{formatRupiah(item.nominal)}</span>
-                      </div>
-                      <div className="mt-1">
-                        <p className="text-xs text-gray-400">{item.waktu}</p>
-                      </div>
-                      <div className="mt-1">
-                        <span className="inline-flex items-center gap-1 bg-green-50 px-2.5 py-1 rounded-full text-xs text-green-600 font-semibold">
-                          {item.status}
-                        </span>
-                      </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-800">{formatRupiah(trx.nominal)}</p>
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
-
-            {/* Total Keseluruhan */}
-            <div className="bg-sky-950 rounded-2xl p-5 flex justify-between items-center">
-              <span className="text-white font-semibold text-sm">Total Keseluruhan</span>
-              <span className="text-xl font-extrabold text-white">{formatRupiah(totalKeseluruhan)}</span>
-            </div>
+            ))}
           </div>
+        </div>
+
+        {/* Total Keseluruhan */}
+        <div className="bg-sky-950 rounded-2xl p-5 flex justify-between items-center mt-6">
+          <span className="text-white font-semibold text-sm">Total Keseluruhan</span>
+          <span className="text-xl font-extrabold text-white">{formatRupiah(totalDibayar)}</span>
         </div>
       </div>
     </div>

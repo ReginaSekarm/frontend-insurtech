@@ -1,12 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { FaHome, FaFileInvoice, FaShoppingCart, FaClipboardList, FaUser, FaTimes } from 'react-icons/fa';
+import { FaHome, FaShoppingCart, FaHandHoldingUsd, FaUser, FaTimes, FaClipboardList } from 'react-icons/fa';
 
 export default function Sidebar({ isOpen, onClose }) {
   const navItems = [
     { to: '/dashboard', label: 'Beranda', icon: FaHome },
-    { to: '/polis-saya', label: 'Polis Saya', icon: FaFileInvoice },
+    { to: '/polis-saya', label: 'Polis Saya', icon: FaClipboardList },
     { to: '/produk', label: 'Beli Produk', icon: FaShoppingCart },
-    { to: '/status-klaim', label: 'Klaim', icon: FaClipboardList },
+    { to: '/status-klaim', label: 'Klaim', icon: FaHandHoldingUsd },
     { to: '/profil', label: 'Profil', icon: FaUser },
   ];
 

@@ -15,7 +15,7 @@ export default function BayarPremi() {
 
   if (!jenis) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
         <div className="bg-white p-6 rounded-xl shadow-md text-center">
           <p className="text-gray-600">Data polis tidak ditemukan.</p>
           <button onClick={() => navigate(-1)} className="mt-3 text-blue-600">Kembali</button>
@@ -24,7 +24,6 @@ export default function BayarPremi() {
     );
   }
 
-  
   const diskon = 0;
   const totalBayar = (premi || 0) - diskon;
 
@@ -33,6 +32,23 @@ export default function BayarPremi() {
       alert('Data polis tidak lengkap');
       return;
     }
+
+    const newTransaction = {
+      id: Date.now(),
+      nama: `Pembayaran Premi ${jenis}`,
+      nominal: totalBayar,
+      tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      tipe: 'premi',
+      noPolis: noPolis,
+      premiPerBulan: premi,
+      statusPolis: 'Aktif',
+      waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB', // opsional
+    };
+
+    const existing = JSON.parse(localStorage.getItem('userTransaksi') || '[]');
+    existing.push(newTransaction);
+    localStorage.setItem('userTransaksi', JSON.stringify(existing));
+
     const transactionId = `NMD-ID${Date.now()}${Math.floor(Math.random() * 1000)}`;
     navigate('/pembayaran-premi', {
       state: {
@@ -45,7 +61,7 @@ export default function BayarPremi() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
+    <div className="min-h-screen bg-amber-50 py-8 px-4">
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div className="p-4 border-b flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">

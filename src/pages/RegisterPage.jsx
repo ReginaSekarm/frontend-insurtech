@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaUpload, FaCheckCircle, FaUserCircle } from 'react-icons/fa';
+import { FaUpload, FaUserCircle, FaCheckCircle } from 'react-icons/fa';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
 
   const [formData, setFormData] = useState({
     namaLengkap: '',
@@ -25,7 +24,9 @@ export default function RegisterPage() {
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [emailPopupMsg, setEmailPopupMsg] = useState('');
 
-  // Email yang sudah terdaftar
+  // Popup syarat & ketentuan
+  const [showTermsPopup, setShowTermsPopup] = useState(false);
+
   const registeredEmails = ['nasabah@insurtech.com', 'admin@insurtech.com'];
 
   const handleChange = (e) => {
@@ -35,7 +36,7 @@ export default function RegisterPage() {
     }
   };
 
-  const validateStep1 = () => {
+  const validateForm = () => {
     const newErrors = {};
     if (!formData.namaLengkap.trim()) newErrors.namaLengkap = 'Nama lengkap harus diisi';
     if (!formData.email.trim()) newErrors.email = 'Email harus diisi';
@@ -50,14 +51,16 @@ export default function RegisterPage() {
     return newErrors;
   };
 
-  const handleNext = () => {
-    const newErrors = validateStep1();
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    // Cek apakah email sudah terdaftar
+    // Cek email sudah terdaftar
     if (registeredEmails.includes(formData.email.toLowerCase())) {
       setEmailPopupMsg(`Email ${formData.email} sudah digunakan. Silakan gunakan email lain atau masuk ke akun Anda.`);
       setShowEmailPopup(true);
@@ -65,23 +68,6 @@ export default function RegisterPage() {
       return;
     }
 
-    setStep(2);
-  };
-
-  const handleBack = () => setStep(1);
-
-  const handleFileChange = (e, type) => {
-    const file = e.target.files[0];
-    if (file && file.size > 5 * 1024 * 1024) {
-      alert('Ukuran file maksimal 5MB');
-      return;
-    }
-    if (type === 'ktp') setKtpFile(file);
-    else setKkFile(file);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
     if (!ktpFile || !kkFile) {
       alert('Harap upload KTP dan Kartu Keluarga');
       return;
@@ -98,143 +84,181 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
-
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 text-center">Daftar Akun</h1>
-          <div className="flex items-center justify-center gap-4 mt-4">
-            <div className={`flex items-center ${step === 2 ? 'text-green-600' : step === 1 ? 'text-sky-900' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                step === 2 ? 'bg-green-500 text-white' : step === 1 ? 'bg-sky-900 text-white' : 'bg-gray-200 text-gray-500'
-              }`}>
-                {step === 2 ? <FaCheckCircle className="text-white text-sm" /> : 1}
-              </div>
-              <span className="ml-2 text-sm font-medium">Data Diri</span>
-            </div>
-            <div className="w-12 h-px bg-gray-300"></div>
-            <div className={`flex items-center ${step === 2 ? 'text-sky-900' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                step === 2 ? 'bg-sky-900 text-white' : 'bg-gray-200 text-gray-500'
-              }`}>2</div>
-              <span className="ml-2 text-sm font-medium">Dokumen</span>
+        <h1 className="text-3xl font-bold text-sky-900 mb-6 text-center">Daftar Akun </h1>
+        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+          <div className="mb-6 flex items-start gap-3">
+            <FaUserCircle className="text-sky-900 text-3xl mt-1" />
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Identitas Pribadi</h2>
+              <p className="text-sm text-gray-500">Lindungi profil cakupan editorial Anda.</p>
             </div>
           </div>
-        </div>
 
-        {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
-          {step === 1 ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <div className="mb-6 flex items-start gap-3">
-                <FaUserCircle className="text-sky-900 text-3xl mt-1" />
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">Identitas Pribadi</h2>
-                  <p className="text-sm text-gray-500">Lindungi profil cakupan editorial Anda.</p>
+              <label className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+              <input
+                type="text"
+                name="namaLengkap"
+                value={formData.namaLengkap}
+                onChange={handleChange}
+                placeholder="Nama Lengkap"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+              />
+              {errors.namaLengkap && <p className="text-red-500 text-xs mt-1">{errors.namaLengkap}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="nama@gmail.com"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">No. Telepon</label>
+              <input
+                type="tel"
+                name="noTelepon"
+                value={formData.noTelepon}
+                onChange={handleChange}
+                placeholder="+62 8xx xxxx xxxx"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+              />
+              {errors.noTelepon && <p className="text-red-500 text-xs mt-1">{errors.noTelepon}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
+              <input
+                type="date"
+                name="tanggalLahir"
+                value={formData.tanggalLahir}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+              />
+              {errors.tanggalLahir && <p className="text-red-500 text-xs mt-1">{errors.tanggalLahir}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Alamat</label>
+              <textarea
+                name="alamat"
+                value={formData.alamat}
+                onChange={handleChange}
+                rows="2"
+                placeholder="Alamat Lengkap"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+              />
+              {errors.alamat && <p className="text-red-500 text-xs mt-1">{errors.alamat}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="•••"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+              />
+              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
+              <input
+                type="password"
+                name="konfirmasiPassword"
+                value={formData.konfirmasiPassword}
+                onChange={handleChange}
+                placeholder="•••"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+              />
+              {errors.konfirmasiPassword && <p className="text-red-500 text-xs mt-1">{errors.konfirmasiPassword}</p>}
+            </div>
+
+            {/* Dokumen Pendukung */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dokumen Pendukung</label>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file && file.size > 5 * 1024 * 1024) alert('Ukuran file maksimal 5MB');
+                      else setKtpFile(file);
+                    }}
+                    className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <span className="text-sm text-gray-500">KTP</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file && file.size > 5 * 1024 * 1024) alert('Ukuran file maksimal 5MB');
+                      else setKkFile(file);
+                    }}
+                    className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <span className="text-sm text-gray-500">KK</span>
+                </div>
+                <div className="flex flex-wrap gap-3 mt-1">
+                  {ktpFile && <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">✓ KTP: {ktpFile.name}</span>}
+                  {kkFile && <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">✓ KK: {kkFile.name}</span>}
+                </div>
+                <p className="text-xs text-gray-400">Format JPG, PNG, PDF (maks 5MB)</p>
               </div>
-              <form className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                  <input type="text" name="namaLengkap" value={formData.namaLengkap} onChange={handleChange} placeholder="Nama Lengkap"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                  {errors.namaLengkap && <p className="text-red-500 text-xs mt-1">{errors.namaLengkap}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="nama@gmail.com"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">No. Telepon</label>
-                  <input type="tel" name="noTelepon" value={formData.noTelepon} onChange={handleChange} placeholder="+62 8xx xxxx xxxx"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                  {errors.noTelepon && <p className="text-red-500 text-xs mt-1">{errors.noTelepon}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
-                  <input type="date" name="tanggalLahir" value={formData.tanggalLahir} onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                  {errors.tanggalLahir && <p className="text-red-500 text-xs mt-1">{errors.tanggalLahir}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Alamat</label>
-                  <textarea name="alamat" value={formData.alamat} onChange={handleChange} rows="2" placeholder="Alamat Lengkap"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                  {errors.alamat && <p className="text-red-500 text-xs mt-1">{errors.alamat}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Password</label>
-                  <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="•••"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                  {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
-                  <input type="password" name="konfirmasiPassword" value={formData.konfirmasiPassword} onChange={handleChange} placeholder="•••"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                  {errors.konfirmasiPassword && <p className="text-red-500 text-xs mt-1">{errors.konfirmasiPassword}</p>}
-                </div>
-                <button type="button" onClick={handleNext}
-                  className="w-auto px-6 bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition mx-auto block">
-                  Lanjut
+            </div>
+
+            {/* Checkbox dan tombol */}
+            <div className="flex items-start">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={agreeTerms}
+                onChange={(e) => setAgreeTerms(e.target.checked)}
+                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded mt-1"
+              />
+              <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
+                Saya menyetujui{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowTermsPopup(true)}
+                  className="text-sky-900 font-medium hover:text-gray-600 transition-colors"
+                >
+                  Syarat & Ketentuan serta Kebijakan Privasi InsurTech
                 </button>
-                <p className="text-center text-sm text-gray-600 mt-3">
-                  Sudah punya akun?{' '}
-                  <button onClick={() => navigate('/login')} className="text-sky-900 font-semibold hover:underline">Masuk</button>
-                </p>
-              </form>
+              </label>
             </div>
-          ) : (
-            <div>
-              <div className="mb-6 flex items-start gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">Upload Dokumen</h2>
-                  <p className="text-sm text-gray-500">Dokumen diperlukan untuk verifikasi identitas</p>
-                </div>
-              </div>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload KTP</label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-sky-500 transition">
-                    <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'ktp')} className="hidden" id="ktp-upload" />
-                    <label htmlFor="ktp-upload" className="cursor-pointer flex flex-col items-center">
-                      <FaUpload className="text-gray-400 text-2xl mb-2" />
-                      <span className="text-sm text-gray-500">Foto atau scan KTP yang jelas</span>
-                      <span className="text-xs text-gray-400">JPG / PNG - maks. 5MB</span>
-                    </label>
-                  </div>
-                  {ktpFile && <p className="text-xs text-green-600 mt-1">✓ {ktpFile.name}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Kartu Keluarga</label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-sky-500 transition">
-                    <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'kk')} className="hidden" id="kk-upload" />
-                    <label htmlFor="kk-upload" className="cursor-pointer flex flex-col items-center">
-                      <FaUpload className="text-gray-400 text-2xl mb-2" />
-                      <span className="text-sm text-gray-500">Foto atau scan Kartu Keluarga</span>
-                      <span className="text-xs text-gray-400">JPG / PNG - maks. 5MB</span>
-                    </label>
-                  </div>
-                  {kkFile && <p className="text-xs text-green-600 mt-1">✓ {kkFile.name}</p>}
-                </div>
-                <div className="flex items-start">
-                  <input type="checkbox" id="terms" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)}
-                    className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded mt-1" />
-                  <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-                    Saya menyetujui <a href="#" className="text-sky-900 font-medium">Syarat & Ketentuan serta Kebijakan Privasi InsurTech</a>
-                  </label>
-                </div>
-                <div className="flex flex-col gap-2 pt-2">
-                  <button type="submit" className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition">Daftar</button>
-                  <button type="button" onClick={handleBack}
-                    className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
-                    <FaArrowLeft size={16} /> Kembali
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
+
+            <button
+              type="submit"
+              className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
+            >
+              Daftar
+            </button>
+
+            <p className="text-center text-sm text-gray-600">
+              Sudah punya akun?{' '}
+              <button onClick={() => navigate('/login')} className="text-sky-900 font-semibold hover:text-gray-600 transition-colors">
+                Masuk
+              </button>
+            </p>
+
+          </form>
         </div>
       </div>
 
@@ -255,6 +279,74 @@ export default function RegisterPage() {
         </div>
       )}
 
+      {/* POPUP SYARAT & KETENTUAN */}
+      {showTermsPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Syarat & Ketentuan InsurTech</h2>
+              <button
+                onClick={() => setShowTermsPopup(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4 text-sm text-gray-700">
+              <div>
+                <h3 className="font-bold text-base mb-2">1. Penerimaan syarat</h3>
+                <p>Dengan mendaftar, mengakses, atau menggunakan layanan InsurTech, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang tercantum dalam dokumen ini. Jika Anda tidak menyetujui syarat ini, harap tidak melanjutkan penggunaan layanan.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">2. Definisi layanan</h3>
+                <p>InsurTech adalah platform teknologi asuransi yang menyediakan:</p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Perbandingan dan pembelian produk asuransi dari berbagai mitra penyedia</li>
+                  <li>Pengajuan klaim secara digital dan pemantauan statusnya</li>
+                  <li>Pengelolaan polis asuransi secara terpadu dalam satu platform</li>
+                  <li>Konsultasi dan rekomendasi produk asuransi berdasarkan kebutuhan</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">3. Kelayakan pengguna</h3>
+                <p>Layanan InsurTech hanya dapat digunakan oleh:</p>
+                <ul className="list-disc pl-5 mt-1">
+                  <li>Individu berusia minimal 17 tahun atau yang telah memiliki KTP</li>
+                  <li>Warga Negara Indonesia atau warga asing yang berdomisili di Indonesia</li>
+                  <li>Badan usaha yang terdaftar secara sah di Indonesia</li>
+                </ul>
+                <p className="mt-1">InsurTech berhak menolak atau menonaktifkan akun yang tidak memenuhi kelayakan ini.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">4. Akun dan keamanan</h3>
+                <p>Pengguna bertanggung jawab untuk menjaga kerahasiaan informasi login dan semua aktivitas yang terjadi di akunnya. InsurTech tidak bertanggung jawab atas kerugian akibat kelalaian pengguna dalam menjaga keamanan akun.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">5. Kewajiban pengguna</h3>
+                <p>Pengguna wajib:</p>
+                <ul className="list-disc pl-5 mt-1">
+                  <li>Memberikan informasi yang akurat, lengkap, dan terkini</li>
+                  <li>Tidak menyalahgunakan platform untuk tujuan penipuan atau ilegal</li>
+                  <li>Tidak melakukan tindakan yang merusak sistem atau pengalaman pengguna lain</li>
+                  <li>Memahami peraturan perundang-undangan yang berlaku di Indonesia</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">6. Pembatasan tanggung jawab</h3>
+                <p>InsurTech bertindak sebagai platform perantara dan tidak bertanggung jawab atas keputusan underwriting, penolakan klaim, atau tindakan lain dari mitra asuransi. Semua ketentuan polis mengacu pada dokumen polis dari penerbit asuransi terkait.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">7. Perubahan layanan</h3>
+                <p>InsurTech berhak mengubah, memperbaiki, atau menghentikan fitur layanan sewaktu-waktu. Perubahan material pada syarat dan ketentuan akan diinformasikan melalui email atau notifikasi dalam aplikasi minimal 14 hari sebelum berlaku.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">8. Hukum yang berlaku</h3>
+                <p>Syarat dan ketentuan ini tunduk pada hukum Republik Indonesia. Setiap perselisihan yang timbul akan diselesaikan melalui musyawarah terlebih dahulu, dan apabila tidak tercapai kesepakatan, akan diselesaikan melalui Pengadilan Negeri Jakarta Selatan.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FaMoneyBillWave,
   FaHandHoldingUsd,
@@ -6,46 +6,77 @@ import {
 } from 'react-icons/fa';
 
 export default function RiwayatTransaksi() {
-  const [transaksi] = useState([
-    { id: 1, tanggal: '2026-03-01', jenis: 'Pembayaran Premi', produk: 'Polis Kesehatan', nominal: 200000 },
-    { id: 2, tanggal: '2026-03-01', jenis: 'Pembayaran Premi', produk: 'Polis Kendaraan', nominal: 150000 },
-    { id: 3, tanggal: '2026-02-15', jenis: 'Pencairan Klaim', produk: 'Klaim Rawat Inap', nominal: 1500000 },
-    { id: 4, tanggal: '2026-02-01', jenis: 'Pembayaran Premi', produk: 'Polis Properti', nominal: 150000 },
-    { id: 5, tanggal: '2026-01-10', jenis: 'Pembayaran Premi', produk: 'Polis Kesehatan', nominal: 150000 },
-  ]);
-
+  const [transaksi, setTransaksi] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('');
 
-  const getIcon = (jenis) => {
-    if (jenis === 'Pembayaran Premi') {
+  useEffect(() => {
+    const stored = localStorage.getItem('userTransaksi');
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        // Urutkan berdasarkan tanggal terbaru
+        data.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+        setTransaksi(data);
+      } catch (e) {
+        console.error('Gagal parse transaksi:', e);
+        setTransaksi([]);
+      }
+    } else {
+      setTransaksi([]);
+    }
+  }, []);
+
+  const getIcon = (tipe) => {
+    if (tipe === 'premi') {
       return <FaMoneyBillWave className="text-green-500 text-2xl" />;
-    } else if (jenis === 'Pencairan Klaim') {
+    } else if (tipe === 'klaim') {
       return <FaHandHoldingUsd className="text-blue-500 text-2xl" />;
     }
     return <FaFileInvoiceDollar className="text-gray-500 text-2xl" />;
   };
 
-  // Kelompokkan transaksi per bulan
+  // Kelompokkan transaksi
   const groupByMonth = (data) => {
-    const grouped = {};
-    data.forEach(item => {
-      const date = new Date(item.tanggal);
-      const monthYear = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }).toUpperCase();
-      if (!grouped[monthYear]) grouped[monthYear] = [];
-      grouped[monthYear].push(item);
-    });
-    return grouped;
-  };
+  const grouped = {};
+  data.forEach(item => {
+    // Coba parsing dengan berbagai format
+    let date = new Date(item.tanggal);
+    if (isNaN(date)) {
+      const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, Mei: 4, May: 4, Jun: 5, Jul: 6, Agu: 7, Aug: 7, Sep: 8, Okt: 9, Oct: 9, Nov: 10, Des: 11, Dec: 11 };
+      const parts = item.tanggal.split(' ');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0]);
+        const month = months[parts[1]];
+        const year = parseInt(parts[2]);
+        if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+          date = new Date(year, month, day);
+        }
+      }
+    }
+    if (isNaN(date)) return;
+    const monthYear = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }).toUpperCase();
+    if (!grouped[monthYear]) grouped[monthYear] = [];
+    grouped[monthYear].push(item);
+  });
+  return grouped;
+};
 
   const grouped = groupByMonth(transaksi);
-  const months = Object.keys(grouped).sort((a, b) => {
-    return new Date(b) - new Date(a);
-  });
+  const months = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
 
-  // FILTER PERIODE 
-  const filteredMonths = selectedMonth 
-    ? months.filter(m => m.includes(selectedMonth)) 
+  // Filter bulan
+  const filteredMonths = selectedMonth
+    ? months.filter(m => m.includes(selectedMonth.toUpperCase()))
     : months;
+
+  // Format nominal 
+  const formatNominal = (nominal, tipe) => {
+    const formatted = `Rp ${nominal.toLocaleString('id-ID')}`;
+    if (tipe === 'klaim') {
+      return <span className="text-black font-bold">{formatted}</span>;
+    }
+    return <span className="text-black font-bold">{formatted}</span>;
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-10 px-4">
@@ -58,57 +89,60 @@ export default function RiwayatTransaksi() {
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
-            <option value="">Periode</option>
-            <option value="JANUARI">Januari</option>
-            <option value="FEBRUARI">Februari</option>
-            <option value="MARET">Maret</option>
-            <option value="APRIL">April</option>
-            <option value="MEI">Mei</option>
-            <option value="JUNI">Juni</option>
-            <option value="JULI">Juli</option>
-            <option value="AGUSTUS">Agustus</option>
-            <option value="SEPTEMBER">September</option>
-            <option value="OKTOBER">Oktober</option>
-            <option value="NOVEMBER">November</option>
-            <option value="DESEMBER">Desember</option>
+            <option value="">Semua Periode</option>
+            <option value="Januari">Januari</option>
+            <option value="Februari">Februari</option>
+            <option value="Maret">Maret</option>
+            <option value="April">April</option>
+            <option value="Mei">Mei</option>
+            <option value="Juni">Juni</option>
+            <option value="Juli">Juli</option>
+            <option value="Agustus">Agustus</option>
+            <option value="September">September</option>
+            <option value="Oktober">Oktober</option>
+            <option value="November">November</option>
+            <option value="Desember">Desember</option>
           </select>
         </div>
       </div>
 
-      {/* Daftar transaksi per bulan */}
-      <div className="space-y-6">
-        {filteredMonths.map((month) => (
-          <div key={month} className="bg-white rounded-xl shadow-md p-5">
-            <h2 className="text-lg font-bold text-gray-800 border-b pb-2 mb-3">{month}</h2>
-            <div className="space-y-4">
-              {grouped[month].map((trx, idx) => (
-                <div key={idx} className="flex gap-4 items-start">
-                  <div className="mt-1">{getIcon(trx.jenis)}</div>
-                  <div className="flex-1">
-                    <div className="flex flex-wrap justify-between items-start">
-                      <div>
-                        <p className="font-semibold text-gray-800">{trx.jenis}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {trx.produk} · {new Date(trx.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
+      {/* Daftar transaksi */}
+      {transaksi.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-xl shadow">
+          <p className="text-gray-500">Belum ada transaksi.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {filteredMonths.map((month) => (
+            <div key={month} className="bg-white rounded-xl shadow-md p-5">
+              <h2 className="text-lg font-bold text-gray-800 border-b pb-2 mb-3">{month}</h2>
+              <div className="space-y-4">
+                {grouped[month].map((trx, idx) => (
+                  <div key={idx} className="flex gap-4 items-start">
+                    <div className="mt-1">{getIcon(trx.tipe)}</div>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-gray-800">{trx.nama}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {trx.noPolis ? `${trx.noPolis} · ` : ''}{trx.tanggal}
+                          </p>
+                        </div>
+                        {formatNominal(trx.nominal, trx.tipe)}
                       </div>
-                      <p className={`font-bold ${trx.jenis === 'Pencairan Klaim' ? 'text-gray-800' : 'text-gray-800'}`}>
-                        {trx.jenis === 'Pencairan Klaim'} Rp {trx.nominal.toLocaleString('id-ID')}
-                      </p>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-        
-        {filteredMonths.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-xl shadow">
-            <p className="text-gray-500">Tidak ada transaksi untuk periode {selectedMonth}.</p>
-          </div>
-        )}
-      </div>
+          ))}
+          {filteredMonths.length === 0 && selectedMonth && (
+            <div className="text-center py-12 bg-white rounded-xl shadow">
+              <p className="text-gray-500">Tidak ada transaksi untuk bulan {selectedMonth}.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
