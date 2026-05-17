@@ -34,7 +34,7 @@ export default function Profil() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20 relative">
+    <div className="min-h-screen pb-20 relative">
       {/* Header */}
       <div className="bg-gradient-to-r from-sky-950 to-sky-800 text-white px-5 pt-8 pb-6 rounded-b-3xl shadow-lg">
         <div className="flex items-center gap-4">

@@ -28,7 +28,7 @@ export default function AdminLayout() {
   const hideSearch = location.pathname === '/admin-review-klaim' || location.pathname === '/admin-tambah-produk' || location.pathname === '/admin-pengguna' || location.pathname === '/admin-verifikasi-dokumen';
   
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-amber-50 overflow-hidden">
 
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'w-56' : 'w-0 overflow-hidden'} transition-all duration-300 min-h-screen bg-[#1B3A5C] flex flex-col flex-shrink-0`}>

@@ -81,7 +81,7 @@ export default function AdminVerifikasiDokumen() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-1 px-4">
+    <div className="min-h-screen py-1 px-4 relative">
       <div className="max-w-5xl mx-auto">
         {/* Toast */}
         {toast && (

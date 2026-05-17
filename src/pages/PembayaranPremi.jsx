@@ -25,7 +25,7 @@ export default function PembayaranPremi() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
+    <div className="min-h-screen py-8 px-4 relative">
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b flex items-center gap-3">

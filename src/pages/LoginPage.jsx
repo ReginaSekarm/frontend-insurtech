@@ -104,7 +104,7 @@ export default function LoginPage() {
   // const handleLoginAPI = async (e) => { ... }
 
   return (
-    <div className="min-h-screen bg-gray-300 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-amber-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 space-y-6">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-sky-950">InsurTech</h2>

@@ -128,8 +128,8 @@ export default function AjukanKlaim() {
   ) : [];
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div className="min-h-screen py-10 px-4 relative">
+      <div className="bg-gray-100 max-w-4xl mx-auto rounded-2xl shadow-xl overflow-hidden">
         <div className="bg-gradient-to-r from-sky-950 to-sky-800 px-6 py-5">
           <h1 className="text-2xl md:text-3xl font-bold text-white">Ajukan Klaim</h1>
           <p className="text-blue-100 text-sm mt-1">Isi formulir klaim dengan data yang benar dan lengkap.</p>
