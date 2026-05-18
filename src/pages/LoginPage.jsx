@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield } from 'lucide-react';
-// import api from '../lib/axios'; // Nonaktifkan dulu jika pakai dummy
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -21,44 +20,53 @@ export default function LoginPage() {
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorPopupMessage, setErrorPopupMessage] = useState('');
 
-  // Data dummy user 
-  const dummyUsers = {
-    nasabah: {
-      email: 'nasabah@insurtech.com',
-      password: '123456',
-      dashboard: '/nasabah/dashboard'
-    },
-    admin: {
-      email: 'admin@insurtech.com',
-      password: 'admin123',
-      dashboard: '/admin/dashboard'
-    }
-  };
-
-  const handleSubmit = (e) => {
+  // ✅ handleSubmit versi API (backend)
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    setTimeout(() => {
-      let user = dummyUsers[role];
-      if (email === user.email && password === user.password) {
-        navigate(user.dashboard);
-      } else {
-        // Coba role lain
-        const otherRole = role === 'nasabah' ? 'admin' : 'nasabah';
-        user = dummyUsers[otherRole];
-        if (email === user.email && password === user.password) {
-          navigate(user.dashboard);
-        } else {
-          setErrorPopupMessage('Email atau password salah. Periksa kembali email dan password Anda, lalu coba lagi.');
-          setShowErrorPopup(true);
-        }
+    try {
+      // Sesuaikan URL endpoint login dengan backend Anda
+      const response = await fetch('http://localhost:8000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, role }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Email atau password salah');
       }
+
+      // Simpan token dan data user
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      // Navigasi berdasarkan role dari response (atau dari state role jika backend tidak mengirim role)
+      const userRole = data.user?.role || role;
+      if (userRole === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/nasabah/dashboard');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setErrorPopupMessage(err.message || 'Email atau password salah. Periksa kembali email dan password Anda, lalu coba lagi.');
+      setShowErrorPopup(true);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
+  // handleResetPassword tetap sama (masih simulasi)
   const handleResetPassword = (e) => {
     e.preventDefault();
     setResetError('');
@@ -81,13 +89,8 @@ export default function LoginPage() {
       return;
     }
 
-    const emailExists = Object.values(dummyUsers).some(user => user.email === resetEmail);
-    if (!emailExists) {
-      setResetError('Email tidak terdaftar.');
-      return;
-    }
-
-    // Proses reset 
+    // Bisa diganti dengan panggilan API reset password nanti
+    // Untuk sementara tetap simulasi
     setTimeout(() => {
       setResetSuccess('Password berhasil direset. Silakan login dengan password baru.');
       setResetEmail('');
@@ -99,9 +102,6 @@ export default function LoginPage() {
       }, 2000);
     }, 500);
   };
-
-  // Jika nanti ingin pindah ke API, buat fungsi handleLoginAPI
-  // const handleLoginAPI = async (e) => { ... }
 
   return (
     <div className="min-h-screen bg-amber-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -156,11 +156,6 @@ export default function LoginPage() {
           <span className="text-gray-600">Belum punya akun? </span>
           <Link to="/register" className="font-medium text-sky-900 hover:text-sky-700">Daftar Sekarang</Link>
         </div>
-
-        <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-500 text-center">
-          <p>Nasabah: nasabah@insurtech.com / 123456</p>
-          <p>Admin: admin@insurtech.com / admin123</p>
-        </div>
       </div>
 
       {/* POPUP LUPA PASSWORD */}
@@ -171,7 +166,6 @@ export default function LoginPage() {
               onClick={() => { setShowForgotPopup(false); setResetError(''); setResetSuccess(''); }}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold"
             >×</button>
-
             <div className="flex flex-col items-center justify-center mb-6">
               <div className="bg-gray-200 p-3 rounded-xl mb-3">
                 <Shield className="text-sky-900 w-10 h-10" strokeWidth={1.5} />
@@ -180,7 +174,6 @@ export default function LoginPage() {
               <p className="mt-1 text-sm text-gray-600">Platform Asuransi Digital</p>
               <p className="text-xs text-gray-500">Reset Password</p>
             </div>
-
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>

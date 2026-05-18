@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Shield, LayoutDashboard, Package, ClipboardList, User, LogOut, Search, Menu } from 'lucide-react';
 
@@ -6,11 +6,33 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Ambil jumlah klaim pending dari API
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/admin/klaim/pending-count', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data');
+        const data = await response.json();
+        setPendingCount(data.count || 0);
+      } catch (error) {
+        console.error('Error fetching pending count:', error);
+        setPendingCount(0);
+      }
+    };
+    fetchPendingCount();
+  }, []);
 
   const menus = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/admin-dashboard' },
     { id: 'produk', label: 'Produk', icon: <Package size={18} />, path: '/admin-produk' },
-    { id: 'review-klaim', label: 'Review Klaim', icon: <ClipboardList size={18} />, badge: 5, path: '/admin-review-klaim' },
+    { id: 'review-klaim', label: 'Review Klaim', icon: <ClipboardList size={18} />, badge: pendingCount, path: '/admin-review-klaim' },
     { id: 'pengguna', label: 'Pengguna', icon: <User size={18} />, path: '/admin-pengguna' },
   ];
 
@@ -24,12 +46,10 @@ export default function AdminLayout() {
   };
   const currentTitle = pageTitles[location.pathname] || 'Pengguna';
 
-  // Hide Navbar di halaman Review Klaim
   const hideSearch = location.pathname === '/admin-review-klaim' || location.pathname === '/admin-tambah-produk' || location.pathname === '/admin-pengguna' || location.pathname === '/admin-verifikasi-dokumen';
   
   return (
     <div className="flex h-screen bg-amber-50 overflow-hidden">
-
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'w-56' : 'w-0 overflow-hidden'} transition-all duration-300 min-h-screen bg-[#1B3A5C] flex flex-col flex-shrink-0`}>
         <div className="px-5 py-5 border-b border-white/10">
@@ -57,7 +77,7 @@ export default function AdminLayout() {
               >
                 {menu.icon}
                 <span>{menu.label}</span>
-                {menu.badge && (
+                {menu.badge > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                     {menu.badge}
                   </span>
@@ -82,7 +102,6 @@ export default function AdminLayout() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Navbar */}
         <div className="h-14 bg-white border-b border-gray-200 flex items-center px-6 flex-shrink-0">
           <h1 className="text-xl font-bold text-gray-800">{currentTitle}</h1>
           {!hideSearch && (
@@ -102,7 +121,6 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </div>

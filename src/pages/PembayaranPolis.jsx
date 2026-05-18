@@ -1,17 +1,45 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { FaDownload } from 'react-icons/fa';
 
 export default function PembayaranPolis() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { total, productName, transactionId, namaPenerima, nikPenerima } = location.state || {
-    total: 200000,
-    productName: 'InsurHealth Premium',
-    transactionId: 'NMIID-ID2025444802321',
-    namaPenerima: '',
-    nikPenerima: '',
-  };
+  const { transactionId: urlTransactionId } = useParams();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Ambil transactionId dari state atau URL
+  const transactionId = location.state?.transactionId || urlTransactionId;
+
+  useEffect(() => {
+    const fetchPembayaran = async () => {
+      if (!transactionId) {
+        setError('ID transaksi tidak ditemukan');
+        setLoading(false);
+        return;
+      }
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/pembayaran-polis/${transactionId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data pembayaran');
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        console.error('Error fetching payment:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPembayaran();
+  }, [transactionId]);
 
   const handleSimpanQR = () => {
     alert('QR Code disimpan (simulasi).');
@@ -25,12 +53,34 @@ export default function PembayaranPolis() {
     navigate('/polis-saya');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen py-8 px-4 flex justify-center items-center">
+        <div className="text-center">Memuat data pembayaran...</div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen py-8 px-4 flex justify-center items-center">
+        <div className="bg-white p-6 rounded-xl shadow-md text-center">
+          <p className="text-red-600">Error: {error || 'Data tidak ditemukan'}</p>
+          <button onClick={() => navigate(-1)} className="mt-3 text-blue-600">Kembali</button>
+        </div>
+      </div>
+    );
+  }
+
+  const { total, productName, transactionId: id, namaPenerima, nikPenerima } = data;
+
   return (
     <div className="min-h-screen py-8 px-4 relative">
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b flex items-center gap-3">
           <button onClick={handleKembali} className="text-gray-600 hover:text-gray-900">
+            <FaArrowLeft />
           </button>
           <h1 className="text-xl font-bold text-gray-800">Pembayaran Polis</h1>
         </div>
@@ -40,7 +90,7 @@ export default function PembayaranPolis() {
           <div className="text-center">
             <p className="text-gray-500 text-sm">Total polis yang harus dibayar</p>
             <p className="text-3xl font-extrabold text-sky-950">
-              Rp {total.toLocaleString('id-ID')}
+              Rp {total?.toLocaleString('id-ID')}
             </p>
             <p className="text-xs text-gray-400 mt-1">{productName}</p>
             {namaPenerima && <p className="text-xs text-gray-400">Penerima: {namaPenerima}</p>}
@@ -48,9 +98,9 @@ export default function PembayaranPolis() {
 
           {/* QR Code */}
           <div className="flex flex-col items-center border-y py-4">
-            <QRCodeSVG value={transactionId} size={180} />
+            <QRCodeSVG value={id} size={180} />
             <p className="text-xs text-gray-500 mt-2 break-all text-center px-4">
-              {transactionId}
+              {id}
             </p>
           </div>
 

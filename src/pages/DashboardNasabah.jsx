@@ -1,37 +1,65 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaShoppingCart, FaHistory, FaClipboardList, FaFileInvoice, FaWallet, FaUser, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import { Shield } from 'lucide-react';
 
 export default function DashboardNasabah() {
-  
-  const user = { name: 'Gendis' };
-  const stats = {
-    polisAktif: 3,
-    totalPolis: 3,
-    totalKlaim: 2,
+  const [user, setUser] = useState({ name: 'Nasabah' });
+  const [stats, setStats] = useState({
+    polisAktif: 0,
+    totalPolis: 0,
+    totalKlaim: 0,
     tunggakan: 0
-  };
+  });
+  const [aktivitas, setAktivitas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const aktivitas = [
-    {
-      id: 1,
-      type: 'premi',
-      title: 'Pembayaran Premi Berhasil',
-      amount: 'Rp 150k',
-      date: '15 Okt 2025',
-      product: 'Asuransi Kesehatan',
-      icon: <FaCheckCircle className="text-green-500" />,
-    },
-    {
-      id: 2,
-      type: 'klaim',
-      title: 'Klaim Sedang Diproses',
-      amount: null,
-      date: '12 Okt 2025',
-      product: 'Asuransi Kendaraan',
-      icon: <FaSpinner className="text-yellow-500" />,
-    },
-  ];
+  useEffect(() => {
+    // Ambil data user dari localStorage (disimpan saat login)
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser({ name: userData.name || 'Nasabah' });
+      } catch (e) {
+        console.error('Parse user error', e);
+      }
+    }
+
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch('/api/nasabah/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data dashboard');
+        const data = await response.json();
+        setStats({
+          polisAktif: data.polisAktif || 0,
+          totalPolis: data.totalPolis || 0,
+          totalKlaim: data.totalKlaim || 0,
+          tunggakan: data.tunggakan || 0
+        });
+        setAktivitas(data.aktivitas || []);
+      } catch (err) {
+        console.error('Error fetching dashboard:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Tentukan ikon berdasarkan tipe aktivitas 
+  const getIconByType = (type) => {
+    if (type === 'premi') return <FaCheckCircle className="text-green-500" />;
+    if (type === 'klaim') return <FaSpinner className="text-yellow-500" />;
+    return null;
+  };
 
   const featureMenus = [
     { label: 'Beli Produk', path: '/produk', icon: FaShoppingCart, color: 'bg-blue-500' },
@@ -42,9 +70,16 @@ export default function DashboardNasabah() {
     { label: 'Profil', path: '/profil', icon: FaUser, color: 'bg-indigo-500' },
   ];
 
+  if (loading) {
+    return <div className="max-w-4xl mx-auto p-6 text-center">Memuat dashboard...</div>;
+  }
+
+  if (error) {
+    return <div className="max-w-4xl mx-auto p-6 text-center text-red-600">Error: {error}</div>;
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-
       {/* Header Selamat Datang */}
       <div className="bg-gradient-to-r from-sky-950 to-sky-800 rounded-2xl p-6 text-white shadow-lg">
         <h1 className="text-2xl font-bold">SELAMAT DATANG,</h1>
@@ -73,17 +108,14 @@ export default function DashboardNasabah() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          {/* Polis */}
           <div className="bg-white/15 rounded-xl px-3 py-3">
             <p className="text-white text-2xl font-bold">{stats.totalPolis}</p>
             <p className="text-white/70 text-xs mt-1">Polis</p>
           </div>
-          {/* Klaim */}
           <div className="bg-white/15 rounded-xl px-3 py-3">
             <p className="text-white text-2xl font-bold">{stats.totalKlaim}</p>
             <p className="text-white/70 text-xs mt-1">Klaim</p>
           </div>
-          {/* Tunggakan (Bisa diklik) */}
           <Link to="/tunggakan" className="block">
             <div className="bg-white/15 rounded-xl px-3 py-3 hover:bg-white/25 transition cursor-pointer">
               <p className="text-white text-2xl font-bold">{stats.tunggakan}</p>
@@ -123,7 +155,7 @@ export default function DashboardNasabah() {
         <div className="space-y-3">
           {aktivitas.map((item) => (
             <div key={item.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-              <div className="text-xl">{item.icon}</div>
+              <div className="text-xl">{getIconByType(item.type)}</div>
               <div className="flex-1">
                 <div className="flex justify-between items-start">
                   <div>
@@ -140,7 +172,6 @@ export default function DashboardNasabah() {
           ))}
         </div>
       </div>
-
     </div>
   );
 }

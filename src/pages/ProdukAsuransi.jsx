@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaHeartbeat, FaHome, FaCar, FaGraduationCap } from 'react-icons/fa';
 
@@ -14,6 +14,12 @@ export default function ProdukAsuransi() {
     nikPenerima: '',
   });
   const [errorPopup, setErrorPopup] = useState({ show: false, message: '' });
+  
+  // State untuk data dari API
+  const [products, setProducts] = useState({});
+  const [pertanggunganOptions, setPertanggunganOptions] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const categories = [
     { name: 'Kesehatan', icon: <FaHeartbeat />, iconColor: 'text-red-500' },
@@ -22,29 +28,47 @@ export default function ProdukAsuransi() {
     { name: 'Pendidikan', icon: <FaGraduationCap />, iconColor: 'text-zinc-600' }
   ];
 
-  const products = {
-    Kesehatan: [
-      { id: 1, name: 'InsurHealth Premium', price: 200000, priceFormatted: 'Rp 200.000', period: '/ bulan', badge: 'Populer', benefits: ['Rawat inap hingga Rp 500jt', 'Tanpa batas kunjungan dokter', 'Proteksi jiwa + kecelakaan'] },
-      { id: 2, name: 'InsurHealth Basic', price: 150000, priceFormatted: 'Rp 150.000', period: '/ bulan', badge: null, benefits: ['Rawat jalan & rawat inap', 'Klaim mudah via aplikasi'] }
-    ],
-    Properti: [
-      { id: 3, name: 'InsurHome Plus', price: 250000, priceFormatted: 'Rp 250.000', period: '/ bulan', badge: 'Populer', benefits: ['Perlindungan kebakaran & banjir', 'Asuransi isi rumah', 'Tanggung jawab hukum'] }
-    ],
-    Kendaraan: [
-      { id: 4, name: 'InsurDrive All Risk', price: 300000, priceFormatted: 'Rp 300.000', period: '/ bulan', badge: 'Populer', benefits: ['Perlindungan All Risk', 'Banjir & gempa', 'Towing gratis'] }
-    ],
-    Pendidikan: [
-      { id: 5, name: 'InsurEdu Plus', price: 350000, priceFormatted: 'Rp 350.000', period: '/ bulan', badge: 'Populer', benefits: ['Dana pendidikan hingga Rp 1M', 'Bebas memilih sekolah', 'Proteksi orang tua'] }
-    ]
-  };
+  // Fetch data produk dari API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        // Ambil daftar produk
+        const produkRes = await fetch('/api/produk', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!produkRes.ok) throw new Error('Gagal mengambil data produk');
+        const produkData = await produkRes.json();
+        
+        // Kelompokkan berdasarkan kategori (asumsikan setiap produk punya field 'kategori')
+        const grouped = {};
+        produkData.forEach(prod => {
+          const kat = prod.kategori; // 'Kesehatan', 'Properti', dst
+          if (!grouped[kat]) grouped[kat] = [];
+          grouped[kat].push(prod);
+        });
+        setProducts(grouped);
 
-  const pertanggunganOptions = {
-    'InsurHealth Premium': [{ label: 'Rp 100.000.000', value: 100000000 }, { label: 'Rp 250.000.000', value: 250000000 }, { label: 'Rp 500.000.000', value: 500000000 }],
-    'InsurHealth Basic': [{ label: 'Rp 50.000.000', value: 50000000 }, { label: 'Rp 100.000.000', value: 100000000 }],
-    'InsurHome Plus': [{ label: 'Rp 200.000.000', value: 200000000 }, { label: 'Rp 500.000.000', value: 500000000 }],
-    'InsurDrive All Risk': [{ label: 'Rp 150.000.000', value: 150000000 }, { label: 'Rp 300.000.000', value: 300000000 }],
-    'InsurEdu Plus': [{ label: 'Rp 500.000.000', value: 500000000 }, { label: 'Rp 1.000.000.000', value: 1000000000 }]
-  };
+        // Ambil opsi nilai pertanggungan (bisa dari endpoint terpisah)
+        const optionsRes = await fetch('/api/pertanggungan-options', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (optionsRes.ok) {
+          const optionsData = await optionsRes.json();
+          setPertanggunganOptions(optionsData);
+        } else {
+          // Fallback kosong
+          setPertanggunganOptions({});
+        }
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const currentProducts = products[activeCategory] || [];
 
@@ -65,6 +89,7 @@ export default function ProdukAsuransi() {
     const basePremi = selectedProduct.price;
     const selectedValue = formData.nilaiPertanggungan;
     if (!selectedValue) return basePremi;
+    // Asumsikan rumus sama
     const extra = (parseFloat(selectedValue) / 100000000) * 50000;
     return Math.round(basePremi + extra);
   };
@@ -72,13 +97,12 @@ export default function ProdukAsuransi() {
   const handleBeliPolis = () => {
     const { nilaiPertanggungan, namaPenerima, nikPenerima } = formData;
     if (!nilaiPertanggungan || !namaPenerima || !nikPenerima) {
-      // Tampilkan popup 
       setErrorPopup({ show: true, message: 'Terdapat data yang belum diisi atau tidak valid. Silahkan periksa kembali!' });
       setTimeout(() => setErrorPopup({ show: false, message: '' }), 3000);
       return;
     }
     
-    // Simpan polis ke localStorage
+    // Simpan polis ke localStorage (atau bisa juga kirim ke API)
     const kategoriMap = {
       Kesehatan: 'Asuransi Kesehatan',
       Properti: 'Asuransi Properti',
@@ -112,6 +136,14 @@ export default function ProdukAsuransi() {
     setShowModal(false);
     setSelectedProduct(null);
   };
+
+  if (loading) {
+    return <div className="max-w-4xl mx-auto p-6 text-center">Memuat data produk...</div>;
+  }
+
+  if (error) {
+    return <div className="max-w-4xl mx-auto p-6 text-center text-red-600">Error: {error}</div>;
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -151,21 +183,24 @@ export default function ProdukAsuransi() {
                 </button>
               </div>
               <div className="mt-4 space-y-1">
-                {product.benefits.map((benefit, idx) => <p key={idx} className="text-gray-600 text-sm flex items-center gap-2"><span className="text-green-500">✓</span> {benefit}</p>)}
+                {product.benefits?.map((benefit, idx) => <p key={idx} className="text-gray-600 text-sm flex items-center gap-2"><span className="text-green-500">✓</span> {benefit}</p>)}
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Modal beli polis */}
+      {/* Modal beli polis (tetap sama, gunakan selectedProduct dan pertanggunganOptions dari API) */}
       {showModal && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-5 space-y-4">
               <div className="bg-blue-50 p-3 rounded-lg text-sm text-sky-950">Pastikan data yang Anda masukkan benar. Polis akan aktif setelah pembayaran pertama dikonfirmasi.</div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Jenis Polis</label><input type="text" value={selectedProduct.name} disabled className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-600" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Nilai Pertanggungan (Rp)</label><select name="nilaiPertanggungan" value={formData.nilaiPertanggungan} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2"><option value="">Pilih nilai pertanggungan</option>{pertanggunganOptions[selectedProduct.name]?.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Nilai Pertanggungan (Rp)</label><select name="nilaiPertanggungan" value={formData.nilaiPertanggungan} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="">Pilih nilai pertanggungan</option>
+                {pertanggunganOptions[selectedProduct.name]?.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama Penerima</label><input type="text" name="namaPenerima" value={formData.namaPenerima} onChange={handleFormChange} placeholder="Nama lengkap sesuai KTP" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">NIK Penerima</label><input type="text" name="nikPenerima" value={formData.nikPenerima} onChange={handleFormChange} placeholder="16 digit NIK" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
               <div className="bg-blue-50 p-3 rounded-lg space-y-2">
@@ -200,7 +235,6 @@ export default function ProdukAsuransi() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -24,41 +24,57 @@ const getIcon = (tipe) => {
 
 export default function LaporanKeuangan() {
   const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('userTransaksi');
-    if (stored) {
+    const fetchLaporanKeuangan = async () => {
       try {
-        const data = JSON.parse(stored);
-        const map = new Map();
-        data.forEach(item => {
-          const key = item.nama;
-          if (!map.has(key)) {
-            map.set(key, {
-              nama: key,
-              tipe: item.tipe,
-              totalNominal: 0,
-              jumlahTransaksi: 0,
-              terbaru: item.tanggal,
-              id: item.id 
-             });
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/laporan-keuangan', {
+          headers: {
+            'Authorization': `Bearer ${token}`
           }
-          const group = map.get(key);
-          group.totalNominal += item.nominal;
-          group.jumlahTransaksi += 1;
-          if (new Date(item.tanggal) > new Date(group.terbaru)) group.terbaru = item.tanggal;
         });
-        
-        const groupedArray = Array.from(map.values()).sort((a, b) => new Date(b.terbaru) - new Date(a.terbaru));
-        setGroups(groupedArray);
-      } catch (e) {
-        console.error(e);
+        if (!response.ok) throw new Error('Gagal mengambil data laporan keuangan');
+        const data = await response.json();
+        // Asumsi data sudah dalam format array groups (sama seperti sebelumnya)
+        setGroups(data);
+      } catch (err) {
+        console.error('Error fetching laporan:', err);
+        setError(err.message);
         setGroups([]);
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setGroups([]);
-    }
+    };
+
+    fetchLaporanKeuangan();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto p-4 space-y-4">
+        <h1 className="text-2xl font-bold text-sky-950">Laporan Keuangan</h1>
+        <h2 className="text-lg font-semibold text-gray-700">Rincian Transaksi</h2>
+        <div className="bg-white rounded-xl shadow-md p-8 text-center">
+          <p className="text-gray-500">Memuat data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-md mx-auto p-4 space-y-4">
+        <h1 className="text-2xl font-bold text-sky-950">Laporan Keuangan</h1>
+        <h2 className="text-lg font-semibold text-gray-700">Rincian Transaksi</h2>
+        <div className="bg-white rounded-xl shadow-md p-8 text-center">
+          <p className="text-red-500">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
@@ -88,7 +104,7 @@ export default function LaporanKeuangan() {
               </div>
               {/* Tautan ke halaman rincian transaksi */}
               <Link
-                to="/rinciantransaksilapkeu/:id"
+                to={`/rinciantransaksilapkeu/${group.id}`}
                 state={{ group: group }}
                 className="mt-2"
               >

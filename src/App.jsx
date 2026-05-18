@@ -50,7 +50,7 @@ function App() {
         <Route path="/polis-saya" element={<PolisSaya />} />
         <Route path="/ajukan-klaim" element={<AjukanKlaim />} />
         <Route path="/notifikasi" element={<Notifikasi />} />
-        <Route path="/pembayaran-polis" element={<PembayaranPolis />} />
+        <Route path="/pembayaran-polis/:transactionId" element={<PembayaranPolis />} />
         <Route path="/bayar-premi" element={<BayarPremi />} />
         <Route path="/pembayaran-premi" element={<PembayaranPremi />} />
         <Route path="/laporan-keuangan" element={<LaporanKeuangan />} />

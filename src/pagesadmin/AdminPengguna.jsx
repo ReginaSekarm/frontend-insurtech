@@ -1,32 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaCheckCircle, FaExclamationTriangle} from 'react-icons/fa';
-
-// Data verifikasi dokumen (ditambahkan id dan jenisDokumen)
-const verifikasiData = [
-  { id: 1, nama: 'Adinda Saraswati', pending: 'KTP Pending KK Pending', jenisDokumen: 'KTP' },
-  { id: 2, nama: 'Budi Hartono', pending: 'KTP Pending KK Pending', jenisDokumen: 'Kartu Keluarga' },
-  { id: 3, nama: 'Budi Hartono', pending: 'KTP Pending KK Pending', jenisDokumen: 'KTP' },
-];
-
-// Data pengguna (contoh)
-const penggunaData = [
-  { nama: 'Siti Rahma', email: 'siti.rahma@gmail.com', polis: 3, klaim: 2, ktp: true, kk: true },
-  { nama: 'Eko Prasetyo', email: 'eko.pras@gmail.com', polis: 1, klaim: 0, ktp: true, kk: false },
-  { nama: 'Dwi Lestari', email: 'dlestari@gmail.com', polis: 2, klaim: 1, ktp: false, kk: false },
-];
+import { FaUser, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 
 export default function AdminPengguna() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [verifikasiData, setVerifikasiData] = useState([]);
+  const [penggunaData, setPenggunaData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        // Ambil daftar verifikasi pending
+        const verifRes = await fetch('/api/admin/verifikasi-pending', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!verifRes.ok) throw new Error('Gagal mengambil data verifikasi');
+        const verifData = await verifRes.json();
+        setVerifikasiData(verifData);
+
+        // Ambil daftar pengguna
+        const userRes = await fetch('/api/admin/pengguna', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!userRes.ok) throw new Error('Gagal mengambil data pengguna');
+        const userData = await userRes.json();
+        setPenggunaData(userData);
+      } catch (err) {
+        console.error('Error fetching admin pengguna:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const filteredPengguna = penggunaData.filter(user =>
+    user.nama.toLowerCase().includes(search.toLowerCase()) ||
+    user.email.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) return <div className="p-6 text-center">Memuat data pengguna...</div>;
+  if (error) return <div className="p-6 text-center text-red-600">Error: {error}</div>;
 
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div>
-          <h1 className="text-base font-bold text-gray-600">MANAJEMEN PENGGUNA</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola semua pengguna yang terdaftar</p>
-        </div>
+        <h1 className="text-base font-bold text-gray-600">MANAJEMEN PENGGUNA</h1>
+        <p className="text-sm text-gray-500 mt-1">Kelola semua pengguna yang terdaftar</p>
+      </div>
 
       {/* Verifikasi Pending */}
       <div className="bg-white rounded-xl shadow-sm p-5">
@@ -47,13 +74,16 @@ export default function AdminPengguna() {
                 <p className="text-xs text-orange-600 font-medium mt-0.5">{item.pending}</p>
               </div>
               <button
-              onClick={() => navigate('/admin-verifikasi-dokumen', { state: { userData: item } })}
-              className="bg-[#1B3A5C] hover:bg-sky-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition"
-            >
-              Verifikasi
-            </button>
+                onClick={() => navigate('/admin-verifikasi-dokumen', { state: { userData: item } })}
+                className="bg-[#1B3A5C] hover:bg-sky-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition"
+              >
+                Verifikasi
+              </button>
             </div>
           ))}
+          {verifikasiData.length === 0 && (
+            <div className="text-center py-4 text-gray-500 text-sm">Tidak ada dokumen pending.</div>
+          )}
         </div>
       </div>
 
@@ -61,7 +91,6 @@ export default function AdminPengguna() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-base font-bold text-gray-800">Data Pengguna</h2>
-          {/* Search input optional */}
           <div className="relative">
             <input
               type="text"
@@ -82,30 +111,30 @@ export default function AdminPengguna() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {penggunaData
-                .filter(user => user.nama.toLowerCase().includes(search.toLowerCase()) || user.email.toLowerCase().includes(search.toLowerCase()))
-                .map((item, idx) => (
+              {filteredPengguna.map((item, idx) => (
                 <tr key={idx} className="hover:bg-gray-50 transition">
                   <td className="px-5 py-3.5 text-sky-700 font-semibold">{item.nama}</td>
                   <td className="px-5 py-3.5 text-gray-600">{item.email}</td>
                   <td className="px-5 py-3.5 text-gray-800 font-medium">{item.polis}</td>
                   <td className="px-5 py-3.5 text-gray-800 font-medium">{item.klaim}</td>
                   <td className="px-5 py-3.5">
-                    {item.ktp ? <span className="text-green-500 text-lg"><FaCheckCircle /></span> : <span className="text-orange-400 text-lg"><FaExclamationTriangle /></span>}
+                    {item.ktp ? <FaCheckCircle className="text-green-500 text-lg" /> : <FaExclamationTriangle className="text-orange-400 text-lg" />}
                   </td>
                   <td className="px-5 py-3.5">
-                    {item.kk ? <span className="text-green-500 text-lg"><FaCheckCircle /></span> : <span className="text-orange-400 text-lg"><FaExclamationTriangle /></span>}
+                    {item.kk ? <FaCheckCircle className="text-green-500 text-lg" /> : <FaExclamationTriangle className="text-orange-400 text-lg" />}
                   </td>
                 </tr>
               ))}
+              {filteredPengguna.length === 0 && (
+                <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-500">Tidak ada data pengguna.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Footer tabel */}
         <div className="px-5 py-3 border-t border-gray-100 flex justify-between items-center">
           <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
-            Menampilkan {penggunaData.filter(user => user.nama.toLowerCase().includes(search.toLowerCase()) || user.email.toLowerCase().includes(search.toLowerCase())).length} dari {penggunaData.length} Pengguna
+            Menampilkan {filteredPengguna.length} dari {penggunaData.length} Pengguna
           </p>
           <div className="flex gap-1">
             <button className="w-7 h-7 border border-gray-300 rounded text-xs hover:bg-gray-50">‹</button>

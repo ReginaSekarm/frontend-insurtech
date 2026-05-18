@@ -8,48 +8,49 @@ export default function AdminVerifikasiDokumen() {
   const navigate = useNavigate();
   const { userData } = location.state || {};
 
-  // Data dummy
-  const [ktpData] = useState({
-    fileName: 'KTP_Adinda_Saraswati.jpg',
-    fileSize: '2.1 MB',
-    fileType: 'JPEG',
-    nik: '3578012304950001',
-    nama: 'Adinda Saraswati',
-    ttl: 'Surabaya, 23 Apr 1995',
-    noKK: '3578010101950002',
-    kepalaKK: 'Saraswati',
-    anggota: '3 orang',
-  });
-
-  const [kkData] = useState({
-    fileName: 'KK_Adinda_Saraswati.jpg',
-    fileSize: '2.1 MB',
-    fileType: 'JPEG',
-    noKK: '3578010101950002',
-    kepalaKK: 'Saraswati',
-    anggota: '3 orang',
-  });
-
+  const [ktpData, setKtpData] = useState(null);
+  const [kkData, setKkData] = useState(null);
   const [ktpChecklist, setKtpChecklist] = useState({
     fotoJelas: false,
     namaSesuai: false,
     nikValid: false,
   });
-
   const [kkChecklist, setKkChecklist] = useState({
     fotoJelas: false,
     namaTercantum: false,
     nomorKKValid: false,
   });
-
   const [catatan, setCatatan] = useState('');
   const [keputusan, setKeputusan] = useState('setuju');
   const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!userData) {
-      // Biarkan dummy
+    if (!userData || !userData.id) {
+      setError('Data user tidak ditemukan');
+      setLoading(false);
+      return;
     }
+
+    const fetchDokumen = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/admin/verifikasi-dokumen/${userData.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data dokumen');
+        const data = await response.json();
+        setKtpData(data.ktp); // data.ktp berisi { fileName, fileSize, fileType, nik, nama, ttl, noKK, kepalaKK, anggota }
+        setKkData(data.kk);   // data.kk berisi { fileName, fileSize, fileType, noKK, kepalaKK, anggota }
+      } catch (err) {
+        console.error('Error fetching dokumen:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDokumen();
   }, [userData]);
 
   const handleKtpCheck = (field) => {
@@ -65,7 +66,7 @@ export default function AdminVerifikasiDokumen() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (keputusan === 'setuju') {
       const allKtpChecked = Object.values(ktpChecklist).every(v => v === true);
       const allKkChecked = Object.values(kkChecklist).every(v => v === true);
@@ -74,11 +75,35 @@ export default function AdminVerifikasiDokumen() {
         return;
       }
     }
-    showToast(`Verifikasi ${keputusan === 'setuju' ? 'disetujui' : 'ditolak'}`, 'success');
-    setTimeout(() => {
-      navigate('/admin-pengguna');
-    }, 1500);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/admin/verifikasi-dokumen/${userData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          keputusan,
+          catatan,
+          checklist: { ktp: ktpChecklist, kk: kkChecklist }
+        })
+      });
+      if (!response.ok) throw new Error('Gagal menyimpan verifikasi');
+      showToast(`Verifikasi ${keputusan === 'setuju' ? 'disetujui' : 'ditolak'}`, 'success');
+      setTimeout(() => {
+        navigate('/admin-pengguna');
+      }, 1500);
+    } catch (err) {
+      console.error('Error submitting verifikasi:', err);
+      showToast('Terjadi kesalahan, silakan coba lagi.', 'error');
+    }
   };
+
+  if (loading) return <div className="p-6 text-center">Memuat data dokumen...</div>;
+  if (error) return <div className="p-6 text-center text-red-600">Error: {error}</div>;
+  if (!ktpData || !kkData) return <div className="p-6 text-center">Data dokumen tidak lengkap</div>;
 
   return (
     <div className="min-h-screen py-1 px-4 relative">
@@ -97,7 +122,7 @@ export default function AdminVerifikasiDokumen() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Data Pengguna</h1>
-              <p className="text-sm text-gray-500 mt-1">Verifikasi dokumen untuk {userData?.nama || 'Adinda Saraswati'}</p>
+              <p className="text-sm text-gray-500 mt-1">Verifikasi dokumen untuk {userData?.nama || 'Pengguna'}</p>
             </div>
             <div className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded-full">
               Pending
@@ -113,7 +138,6 @@ export default function AdminVerifikasiDokumen() {
               <IdCard className="w-6 h-6" /> KTP
             </h2>
             <div className="flex flex-col gap-4">
-              {/* Ikon di atas */}
               <div className="bg-gray-100 rounded-xl p-4 flex flex-col items-center text-center">
                 <div className="text-3xl mb-2">📄</div>
                 <div>
@@ -125,8 +149,7 @@ export default function AdminVerifikasiDokumen() {
                 <div><span className="text-gray-500">NIK</span><br /><span className="font-semibold">{ktpData.nik}</span></div>
                 <div><span className="text-gray-500">NAMA</span><br /><span className="font-semibold">{ktpData.nama}</span></div>
                 <div><span className="text-gray-500">TTL</span><br /><span className="font-semibold">{ktpData.ttl}</span></div>
-             </div>
-              
+              </div>
             </div>
           </div>
 
@@ -136,7 +159,6 @@ export default function AdminVerifikasiDokumen() {
               <Users className="w-6 h-6" /> KK
             </h2>
             <div className="flex flex-col gap-4">
-              {/* Ikon di atas */}
               <div className="bg-gray-100 rounded-xl p-4 flex flex-col items-center text-center">
                 <div className="text-3xl mb-2">📄</div>
                 <div>
@@ -149,7 +171,6 @@ export default function AdminVerifikasiDokumen() {
                 <div><span className="text-gray-500">Kepala KK</span><br /><span className="font-semibold">{kkData.kepalaKK}</span></div>
                 <div><span className="text-gray-500">Anggota</span><br /><span className="font-semibold">{kkData.anggota}</span></div>
               </div>
-              
             </div>
           </div>
         </div>

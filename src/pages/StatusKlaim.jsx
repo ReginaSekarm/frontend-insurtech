@@ -4,6 +4,8 @@ import { FaHome, FaHeartbeat, FaCar, FaGraduationCap } from 'react-icons/fa';
 
 export default function StatusKlaim() {
   const [claims, setClaims] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const getIconByJenis = (jenis) => {
     if (!jenis) return <FaHome className="text-gray-400 text-3xl" />;
@@ -28,21 +30,33 @@ export default function StatusKlaim() {
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem('userKlaim');
-    if (stored) {
+    const fetchKlaim = async () => {
       try {
-        const parsed = JSON.parse(stored);
-        const validClaims = parsed.filter(claim => claim && claim.jenis);
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/klaim', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data klaim');
+        const data = await response.json();
+        // Pastikan data adalah array
+        const klaimArray = Array.isArray(data) ? data : (data.claims || []);
+        const validClaims = klaimArray.filter(claim => claim && claim.jenis);
         const withIcons = validClaims.map(claim => ({
           ...claim,
           icon: getIconByJenis(claim.jenis)
         }));
         setClaims(withIcons);
-      } catch (e) {
-        console.error('Gagal parse klaim:', e);
+      } catch (err) {
+        console.error('Error fetching klaim:', err);
+        setError(err.message);
         setClaims([]);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+    fetchKlaim();
   }, []);
 
   const handleDownload = (claimNo) => {
@@ -55,6 +69,14 @@ export default function StatusKlaim() {
     }
     return 'bg-gray-300 hover:bg-gray-500 text-sky-950';
   };
+
+  if (loading) {
+    return <div className="max-w-4xl mx-auto p-6 text-center">Memuat status klaim...</div>;
+  }
+
+  if (error) {
+    return <div className="max-w-4xl mx-auto p-6 text-center text-red-600">Error: {error}</div>;
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-10">
@@ -72,7 +94,6 @@ export default function StatusKlaim() {
               className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden"
             >
               <div className="p-5 space-y-4">
-                {/* Ikon + Jenis Asuransi dan Status */}
                 <div className="flex justify-between items-start">
                   <div className="flex gap-4 items-start">
                     <div className="text-3xl mt-1">{claim.icon}</div>
@@ -94,7 +115,6 @@ export default function StatusKlaim() {
                   </p>
                 </div>
 
-                {/* Tanggal Pengajuan dan Jumlah Klaim */}
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-black font-semibold text-sm">TANGGAL PENGAJUAN</p>
@@ -106,7 +126,6 @@ export default function StatusKlaim() {
                   </div>
                 </div>
 
-                {/* Tanggal Pencairan */}
                 <div>
                   <p className="text-black font-semibold text-sm">TANGGAL PENCAIRAN</p>
                   {claim.status === 'DITOLAK' ? (
@@ -122,7 +141,6 @@ export default function StatusKlaim() {
                   )}
                 </div>
 
-                {/* Catatan Admin - dalam card kecil */}
                 <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CATATAN ADMIN</p>
                   <p className="text-sm text-gray-700 mt-1">
@@ -130,7 +148,6 @@ export default function StatusKlaim() {
                   </p>
                 </div>
 
-                {/* Tombol Unduh PDF */}
                 <div className="pt-2">
                   <button
                     onClick={() => handleDownload(claim.noPolis)}

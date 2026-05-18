@@ -19,8 +19,8 @@ export default function AdminTambahProduk() {
   const [pdfFile, setPdfFile] = useState(null);
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorMessages, setErrorMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
- 
   useEffect(() => {
     if (showErrorPopup) {
       const timer = setTimeout(() => setShowErrorPopup(false), 3000);
@@ -58,7 +58,7 @@ export default function AdminTambahProduk() {
     return errors;
   };
 
-  const handleSubmit = (type) => {
+  const handleSubmit = async (type) => {
     const errors = validateForm();
     if (errors.length > 0) {
       setErrorMessages(errors);
@@ -66,29 +66,43 @@ export default function AdminTambahProduk() {
       return;
     }
 
-    const newProduct = {
-      id: mode === 'edit' ? product.id : Date.now(),
-      nama: formData.namaProduk,
-      kategori: formData.kategori,
-      premi: `Rp ${parseInt(formData.premi || 0).toLocaleString('id-ID')}`,
-      maks: `Rp ${parseInt(formData.maksKlaim || 0).toLocaleString('id-ID')}`,
-      status: status === 'aktif' ? 'Aktif' : status === 'draft' ? 'Draft' : 'Nonaktif',
-      masaTunggu: formData.masaTunggu,
-      deskripsi: formData.deskripsi,
-      pdfFile: pdfFile ? pdfFile.name : null,
-    };
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const productData = {
+        nama: formData.namaProduk,
+        kategori: formData.kategori,
+        premi: parseInt(formData.premi || 0),
+        maksKlaim: parseInt(formData.maksKlaim || 0),
+        status: status === 'aktif' ? 'Aktif' : status === 'draft' ? 'Draft' : 'Nonaktif',
+        masaTunggu: parseInt(formData.masaTunggu || 0),
+        deskripsi: formData.deskripsi,
+      };
 
-    const stored = localStorage.getItem('adminProduk');
-    let products = stored ? JSON.parse(stored) : [];
+      let url = '/api/admin/produk';
+      let method = 'POST';
+      if (mode === 'edit') {
+        url = `/api/admin/produk/${product.id}`;
+        method = 'PUT';
+      }
 
-    if (mode === 'edit') {
-      products = products.map(p => p.id === newProduct.id ? newProduct : p);
-    } else {
-      products.push(newProduct);
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(productData)
+      });
+      if (!response.ok) throw new Error('Gagal menyimpan produk');
+      alert(`Produk berhasil ${type === 'publish' ? 'dipublikasikan' : 'disimpan sebagai draft'}`);
+      navigate('/admin-produk');
+    } catch (err) {
+      console.error('Error saving product:', err);
+      alert('Gagal menyimpan produk. Silakan coba lagi.');
+    } finally {
+      setIsLoading(false);
     }
-    localStorage.setItem('adminProduk', JSON.stringify(products));
-    alert(`Produk berhasil ${type === 'publish' ? 'dipublikasikan' : 'disimpan sebagai draft'}`);
-    navigate('/admin-produk');
   };
 
   return (
@@ -198,10 +212,10 @@ export default function AdminTambahProduk() {
             Perubahan belum disimpan
           </div>
           <div className="flex items-center gap-4 flex-wrap">
-            <button onClick={() => handleSubmit('publish')} className="flex items-center gap-2 bg-[#1B3A5C] hover:bg-sky-800 text-white font-semibold px-8 py-2.5 rounded-lg text-sm transition">
+            <button onClick={() => handleSubmit('publish')} disabled={isLoading} className="flex items-center gap-2 bg-[#1B3A5C] hover:bg-sky-800 text-white font-semibold px-8 py-2.5 rounded-lg text-sm transition disabled:opacity-50">
               Simpan & Publikasikan
             </button>
-            <button onClick={() => handleSubmit('draft')} className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-8 py-2.5 rounded-lg text-sm transition">
+            <button onClick={() => handleSubmit('draft')} disabled={isLoading} className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-8 py-2.5 rounded-lg text-sm transition disabled:opacity-50">
               Simpan Draft
             </button>
             <button onClick={() => navigate('/admin-produk')} className="bg-red-600 hover:bg-red-600 text-white font-semibold px-8 py-2.5 rounded-lg text-sm transition">

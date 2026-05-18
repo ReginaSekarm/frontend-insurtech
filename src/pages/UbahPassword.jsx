@@ -11,6 +11,7 @@ export default function UbahPassword() {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Validasi password
   const hasMinLength = password.length >= 8;
@@ -30,7 +31,7 @@ export default function UbahPassword() {
 
   const strength = getPasswordStrength();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isPasswordValid) {
       setErrorMessage('Kata sandi Anda belum memenuhi ketentuan.');
       setShowErrorPopup(true);
@@ -41,7 +42,30 @@ export default function UbahPassword() {
       setShowErrorPopup(true);
       return;
     }
-    setShowSuccessPopup(true);
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/nasabah/ubah-password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ newPassword: password })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal mengubah password');
+      }
+      setShowSuccessPopup(true);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      setErrorMessage(error.message || 'Terjadi kesalahan. Silakan coba lagi.');
+      setShowErrorPopup(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSuccessOk = () => {
@@ -141,9 +165,10 @@ export default function UbahPassword() {
         <div className="flex gap-3 pt-2">
           <button
             onClick={handleSave}
-            className="flex-1 bg-sky-950 hover:bg-gray-500 text-white font-semibold py-2 rounded-lg transition"
+            disabled={isLoading}
+            className="flex-1 bg-sky-950 hover:bg-gray-500 text-white font-semibold py-2 rounded-lg transition disabled:opacity-50"
           >
-            Simpan
+            {isLoading ? 'Menyimpan...' : 'Simpan'}
           </button>
           <button
             onClick={() => navigate(-1)}
@@ -166,7 +191,7 @@ export default function UbahPassword() {
               </div>
               <h3 className="text-lg font-bold text-gray-800">Kata Sandi Tidak Memenuhi Syarat</h3>
               <p className="text-gray-600 text-sm mt-2">{errorMessage}</p>
-              <button onClick={handleErrorOk} className="mt-4 bg-white hover:bg-gray-300 text-black px-6 py-2 rounded-lg font-medium shadow-md border border-gray-800 overflow-hidden ">
+              <button onClick={handleErrorOk} className="mt-4 bg-white hover:bg-gray-300 text-black px-6 py-2 rounded-lg font-medium shadow-md border border-gray-800">
                 Coba Lagi
               </button>
             </div>
@@ -186,7 +211,7 @@ export default function UbahPassword() {
               </div>
               <h3 className="text-lg font-bold text-gray-800">Kata Sandi Berhasil Diubah</h3>
               <p className="text-gray-600 text-sm mt-2">Kata sandi Anda telah berhasil diperbarui.</p>
-              <button onClick={handleSuccessOk} className="mt-4 bg-white hover:bg-gray-300 text-black px-6 py-2 rounded-lg font-medium shadow-md border border-gray-800 overflow-hidden">
+              <button onClick={handleSuccessOk} className="mt-4 bg-white hover:bg-gray-300 text-black px-6 py-2 rounded-lg font-medium shadow-md border border-gray-800">
                 Oke, Mengerti
               </button>
             </div>

@@ -8,15 +8,6 @@ const statusColor = {
   Nonaktif: 'bg-red-100 text-red-700',
 };
 
-
-const initialProducts = [
-  { id: 1, nama: 'Sehat Plus Individu', kategori: 'Kesehatan', premi: 'Rp 200.000', maks: 'Rp 50jt', status: 'Aktif' },
-  { id: 2, nama: 'Sehat Plus Keluarga', kategori: 'Kesehatan', premi: 'Rp 350.000', maks: 'Rp 100jt', status: 'Aktif' },
-  { id: 3, nama: 'Rumahku Terlindung', kategori: 'Properti', premi: 'Rp 150.000', maks: 'Rp 200jt', status: 'Aktif' },
-  { id: 4, nama: 'Dana Cerdas Anak', kategori: 'Pendidikan', premi: 'Rp 250.000', maks: 'Rp 150jt', status: 'Aktif' },
-  { id: 5, nama: 'Kendaraan Aman', kategori: 'Kendaraan', premi: 'Rp 180.000', maks: 'Rp 80jt', status: 'Draft' },
-];
-
 const getIconByKategori = (kategori) => {
   if (kategori === 'Kesehatan') return <FaHeartbeat className="text-2xl text-red-500" />;
   if (kategori === 'Properti') return <FaHome className="text-2xl text-blue-300" />;
@@ -30,26 +21,33 @@ export default function AdminProduk() {
   const [products, setProducts] = useState([]);
   const [sortBy, setSortBy] = useState('terlama');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const itemsPerPage = 5;
 
-  // Load produk dari localStorage
+  // Ambil data produk dari API
   useEffect(() => {
-    const stored = localStorage.getItem('adminProduk');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      const withIcons = parsed.map(p => ({
-        ...p,
-        icon: getIconByKategori(p.kategori)
-      }));
-      setProducts(withIcons);
-    } else {
-      const withIcons = initialProducts.map(p => ({
-        ...p,
-        icon: getIconByKategori(p.kategori)
-      }));
-      setProducts(withIcons);
-      localStorage.setItem('adminProduk', JSON.stringify(initialProducts));
-    }
+    const fetchProducts = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/admin/produk', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data produk');
+        const data = await response.json();
+        const withIcons = data.map(p => ({
+          ...p,
+          icon: getIconByKategori(p.kategori)
+        }));
+        setProducts(withIcons);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
   }, []);
 
   const sortOptions = [
@@ -91,16 +89,26 @@ export default function AdminProduk() {
     navigate('/admin-tambah-produk', { state: { mode: 'add' } });
   };
 
-  // Hapus produk
-  const handleDelete = (id, nama) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus produk "${nama}"?`)) {
-      const updatedProducts = products.filter(p => p.id !== id);
-      setProducts(updatedProducts);
-      // Update localStorage 
-      const productsToStore = updatedProducts.map(({ icon, ...rest }) => rest);
-      localStorage.setItem('adminProduk', JSON.stringify(productsToStore));
+  // Hapus produk via API
+  const handleDelete = async (id, nama) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus produk "${nama}"?`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/admin/produk/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Gagal menghapus produk');
+      // Hapus dari state lokal
+      setProducts(products.filter(p => p.id !== id));
+    } catch (err) {
+      console.error('Error deleting product:', err);
+      alert('Gagal menghapus produk. Silakan coba lagi.');
     }
   };
+
+  if (loading) return <div className="p-6 text-center">Memuat data produk...</div>;
+  if (error) return <div className="p-6 text-center text-red-600">Error: {error}</div>;
 
   return (
     <div className="space-y-6">

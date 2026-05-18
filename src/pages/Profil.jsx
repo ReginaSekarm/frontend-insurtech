@@ -6,8 +6,11 @@ export default function Profil() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showPhoneSuccess, setShowPhoneSuccess] = useState(false);
+  const [profilData, setProfilData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
- 
+  // Deteksi notifikasi sukses ubah telepon (dari state navigasi)
   useEffect(() => {
     if (location.state?.phoneUpdateSuccess) {
       setShowPhoneSuccess(true);
@@ -17,21 +20,44 @@ export default function Profil() {
     }
   }, [location.state]);
 
-  
-  const profilData = {
-    fullName: 'Gendis Ayu Pratiwi',
-    email: 'gendis@gmail.com',
-    phone: '+62 812-3456-7890',
-    ktpUploadDate: '12 Jan 2026',
-    kkUploadDate: '12 Jan 2026',
-    profileImage: null,
-  };
+  // Ambil data profil dari API
+  useEffect(() => {
+    const fetchProfil = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/nasabah/profil', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data profil');
+        const data = await response.json();
+        setProfilData(data);
+      } catch (err) {
+        console.error('Error fetching profil:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfil();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/login');
   };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Memuat profil...</div>;
+  }
+
+  if (error) {
+    return <div className="min-h-screen flex items-center justify-center text-red-600">Error: {error}</div>;
+  }
+
+  if (!profilData) return null;
 
   return (
     <div className="min-h-screen pb-20 relative">
@@ -45,7 +71,7 @@ export default function Profil() {
             <h1 className="text-xl font-bold">{profilData.fullName}</h1>
             <p className="text-sm text-blue-100 flex items-center gap-1">
               <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
-              Akun Terverifikasi
+              {profilData.isVerified ? 'Akun Terverifikasi' : 'Belum Terverifikasi'}
             </p>
           </div>
         </div>
@@ -87,14 +113,14 @@ export default function Profil() {
                 <p className="font-medium text-gray-700">KTP</p>
                 <p className="text-xs text-gray-400">Diunggah {profilData.ktpUploadDate}</p>
               </div>
-              <button className="text-sky-800 text-sm font-medium">Terverifikasi</button>
+              <button className="text-sky-800 text-sm font-medium">{profilData.ktpStatus || 'Terverifikasi'}</button>
             </div>
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-700">Kartu Keluarga</p>
                 <p className="text-xs text-gray-400">Diunggah {profilData.kkUploadDate}</p>
               </div>
-              <button className="text-sky-800 text-sm font-medium">Terverifikasi</button>
+              <button className="text-sky-800 text-sm font-medium">{profilData.kkStatus || 'Terverifikasi'}</button>
             </div>
           </div>
         </div>

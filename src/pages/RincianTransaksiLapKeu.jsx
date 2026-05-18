@@ -16,6 +16,8 @@ export default function RincianKelompokTransaksi() {
 
   const [transaksiList, setTransaksiList] = useState([]);
   const [infoPolis, setInfoPolis] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!group) {
@@ -23,39 +25,58 @@ export default function RincianKelompokTransaksi() {
       return;
     }
 
-    const stored = localStorage.getItem('userTransaksi');
-    if (stored) {
-      const allTransaksi = JSON.parse(stored);
-      const filtered = allTransaksi.filter(t => t.nama === group.nama);
-      setTransaksiList(filtered);
-
-      const transaksiPremi = filtered.find(t => t.tipe === 'premi' && t.noPolis);
-      if (transaksiPremi) {
-        setInfoPolis({
-          jenis: transaksiPremi.nama.replace('Pembayaran Premi ', ''),
-          noPolis: transaksiPremi.noPolis,
-          premiPerBulan: transaksiPremi.premiPerBulan || transaksiPremi.nominal,
-          statusPolis: transaksiPremi.statusPolis || 'Aktif',
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        // Ambil daftar transaksi untuk kelompok ini
+        const transaksiRes = await fetch(`/api/laporan-keuangan/kelompok/${encodeURIComponent(group.nama)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-      } else {
-        const storedPolis = localStorage.getItem('userPolis');
-        if (storedPolis) {
-          const polisList = JSON.parse(storedPolis);
-          const polis = polisList.find(p => group.nama.includes(p.jenis));
-          if (polis) {
-            setInfoPolis({
-              jenis: polis.jenis,
-              noPolis: polis.noPolis,
-              premiPerBulan: polis.premi,
-              statusPolis: 'Aktif',
-            });
+        if (!transaksiRes.ok) throw new Error('Gagal mengambil data transaksi');
+        const transaksiData = await transaksiRes.json();
+        setTransaksiList(transaksiData.transactions || []); // asumsikan response { transactions: [...] }
+
+        // Ambil informasi polis (bisa dari endpoint lain atau dari transaksi pertama yang memiliki noPolis)
+        const firstPremi = transaksiData.transactions?.find(t => t.tipe === 'premi' && t.noPolis);
+        if (firstPremi) {
+          setInfoPolis({
+            jenis: firstPremi.nama.replace('Pembayaran Premi ', ''),
+            noPolis: firstPremi.noPolis,
+            premiPerBulan: firstPremi.premiPerBulan || firstPremi.nominal,
+            statusPolis: firstPremi.statusPolis || 'Aktif',
+          });
+        } else {
+          // Coba ambil dari API polis jika ada
+          const polisRes = await fetch(`/api/nasabah/polis?nama=${encodeURIComponent(group.nama)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (polisRes.ok) {
+            const polisData = await polisRes.json();
+            if (polisData.length > 0) {
+              const polis = polisData[0];
+              setInfoPolis({
+                jenis: polis.jenis,
+                noPolis: polis.noPolis,
+                premiPerBulan: polis.premi,
+                statusPolis: polis.status || 'Aktif',
+              });
+            }
           }
         }
+      } catch (err) {
+        console.error('Error fetching kelompok data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    fetchData();
   }, [group, navigate]);
 
   if (!group) return null;
+  if (loading) return <div className="min-h-screen bg-gray-100 flex justify-center items-center">Memuat data...</div>;
+  if (error) return <div className="min-h-screen bg-gray-100 flex justify-center items-center text-red-600">Error: {error}</div>;
   if (transaksiList.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -76,16 +97,16 @@ export default function RincianKelompokTransaksi() {
   else if (group.nama.includes('Kesehatan')) groupIcon = <FaHeartbeat className="text-white text-2xl" />;
   else if (group.nama.includes('Properti')) groupIcon = <FaHome className="text-white text-2xl" />;
   else if (group.nama.includes('Pendidikan')) groupIcon = <FaGraduationCap className="text-white text-2xl" />;
-  else groupIcon = <Shield size={24} className="text-white" />;
+  else groupIcon = <FaHome className="text-white text-2xl" />; // fallback
 
   return (
     <div className="min-h-screen bg-gray-100 py-6 px-4">
       <div className="max-w-4xl mx-auto">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 mb-4">
-          <FaArrowLeft size={16} />
+          <FaArrowLeft size={16} /> Kembali
         </button>
 
-        {/* Header */}
+        {/* Header gradasi */}
         <div className="bg-gradient-to-r from-sky-950 to-sky-800 rounded-2xl p-6 text-white mb-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="bg-white/20 p-2 rounded-xl">{groupIcon}</div>
@@ -131,13 +152,12 @@ export default function RincianKelompokTransaksi() {
           </div>
         )}
 
-        {/* Riwayat Pembayaran Premi */}
+        {/* Riwayat Pembayaran */}
         <div className="bg-white rounded-2xl shadow-sm p-5">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Riwayat Pembayaran Premi</h2>
           <div className="space-y-4">
             {transaksiList.map((trx, idx) => (
               <div key={idx} className="border-b border-gray-100 pb-3 last:border-0 flex gap-3">
-                {/* Ikon paper plane di kiri */}
                 <div className="mt-1">
                   <FaPaperPlane className="text-gray-400 text-xl" />
                 </div>

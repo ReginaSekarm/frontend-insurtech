@@ -1,55 +1,68 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, ShieldCheck, ClipboardClock } from 'lucide-react';
-import {FaMoneyBillWave} from 'react-icons/fa';
+import { FaMoneyBillWave } from 'react-icons/fa';
 
 export default function AdminDashboard() {
-  // Data statistik (contoh)
-  const stats = [
-    { label: 'Pengguna', value: '1.284', icon: <User size={28} />, bg: 'bg-white', iconBg: 'bg-blue-100', iconColor: 'text-sky-900' },
-    { label: 'Polis Aktif', value: '3.410', icon: <ShieldCheck size={28} />, bg: 'bg-white', iconBg: 'bg-green-100', iconColor: 'text-sky-900' },
-    { label: 'Klaim Pending', value: '5', icon: <ClipboardClock size={28} />, bg: 'bg-white', iconBg: 'bg-yellow-100', iconColor: 'text-orange-600' },
-    { label: 'Premi Bulan Ini', value: 'Rp 68jt', icon: <FaMoneyBillWave size={28} />, bg: 'bg-white', iconBg: 'bg-purple-100', iconColor: 'text-green-600' },
-  ];
+  const [stats, setStats] = useState([]);
+  const [klaimData, setKlaimData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Data tabel klaim (contoh)
-  const klaimData = [
-    { no: 'KL-2026-018', nasabah: 'Gunandi D.', produk: 'Kesehatan', nilai: 'Rp 2.000.000', dokumen: 'Valid', status: 'Disetujui' },
-    { no: 'KL-2026-017', nasabah: 'Rina A.', produk: 'Properti', nilai: 'Rp 5.500.000', dokumen: 'Valid', status: 'Disetujui' },
-    { no: 'KL-2026-016', nasabah: 'Budi S.', produk: 'Pendidikan', nilai: 'Rp 1.200.000', dokumen: 'Tidak Valid', status: 'Ditolak' },
-    { no: 'KL-2026-014', nasabah: 'Siti W.', produk: 'Kesehatan', nilai: 'Rp 500.000', dokumen: 'Valid', status: 'Disetujui' },
-    { no: 'KL-2026-013', nasabah: 'Dodi K.', produk: 'Kesehatan', nilai: 'Rp 3.000.000', dokumen: 'Tidak valid', status: 'Ditolak' },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Ganti dengan endpoint API yang sesuai
+        const response = await fetch('/api/admin/dashboard');
+        if (!response.ok) {
+          throw new Error('Gagal mengambil data dashboard');
+        }
+        const data = await response.json();
+        // Asumsikan data.stats dan data.klaim sesuai format
+        setStats(data.stats || []);
+        setKlaimData(data.klaim || []);
+      } catch (err) {
+        console.error('Error fetching dashboard:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Fungsi untuk menentukan warna status
+    fetchDashboardData();
+  }, []);
+
+  // Fungsi untuk menentukan warna status (tetap sama)
   const getStatusColor = (status) => {
     if (status === 'Disetujui') return 'text-green-600 bg-green-50';
     if (status === 'Ditolak') return 'text-red-600 bg-red-50';
     return 'text-yellow-600 bg-yellow-50';
   };
 
-  const getDokumenColor = (dokumen) => {
-    if (dokumen === 'Valid') return 'text-green-600';
-    return 'text-red-600';
+  const dokumenStyle = {
+    Valid: 'bg-blue-100 text-gray-500',
+    'Tidak Valid': 'bg-orange-100 text-orange-800',
   };
 
-  const dokumenStyle = {
-  Valid: 'bg-blue-100 text-gray-500',
-  'Tidak Valid': 'bg-orange-100 text-orange-800',
-};
+  if (loading) {
+    return <div className="p-6 text-center">Memuat data dashboard...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-center text-red-600">Error: {error}</div>;
+  }
 
   return (
     <div className="space-y-6">
-
       {/* Kartu Statistik */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
-          <div key={idx} className={`${stat.bg} rounded-xl p-4 flex items-center gap-4 shadow-sm`}>
-            <div className={`p-3 rounded-full ${stat.iconBg}`}>
-              <div className={stat.iconColor}>{stat.icon}</div>
+          <div key={idx} className={`${stat.bg || 'bg-white'} rounded-xl p-4 flex items-center gap-4 shadow-sm`}>
+            <div className={`p-3 rounded-full ${stat.iconBg || 'bg-gray-100'}`}>
+              <div className={stat.iconColor || 'text-gray-600'}>{stat.icon}</div>
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{stat.label}</p>
-              <p className={`text-2xl font-extrabold ${stat.text} mt-1`}>{stat.value}</p>
+              <p className={`text-2xl font-extrabold ${stat.text || 'text-gray-800'} mt-1`}>{stat.value}</p>
             </div>
           </div>
         ))}

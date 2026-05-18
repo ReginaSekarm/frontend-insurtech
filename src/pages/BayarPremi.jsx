@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FaHome } from 'react-icons/fa';
 
@@ -5,6 +6,8 @@ export default function BayarPremi() {
   const location = useLocation();
   const navigate = useNavigate();
   const { jenis, noPolis, premi, premiFormatted, periode } = location.state || {};
+
+  const [loading, setLoading] = useState(false);
 
   const detailTagihan = {
     tanggalJatuhTempo: '10 Jun 2026',
@@ -27,37 +30,49 @@ export default function BayarPremi() {
   const diskon = 0;
   const totalBayar = (premi || 0) - diskon;
 
-  const handleBayarNow = () => {
+  const handleBayarNow = async () => {
     if (!jenis || !noPolis) {
       alert('Data polis tidak lengkap');
       return;
     }
 
-    const newTransaction = {
-      id: Date.now(),
-      nama: `Pembayaran Premi ${jenis}`,
-      nominal: totalBayar,
-      tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-      tipe: 'premi',
-      noPolis: noPolis,
-      premiPerBulan: premi,
-      statusPolis: 'Aktif',
-      waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB', // opsional
-    };
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/transaksi/premi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          jenis,
+          noPolis,
+          nominal: totalBayar,
+          premiPerBulan: premi,
+        }),
+      });
 
-    const existing = JSON.parse(localStorage.getItem('userTransaksi') || '[]');
-    existing.push(newTransaction);
-    localStorage.setItem('userTransaksi', JSON.stringify(existing));
+      if (!response.ok) throw new Error('Gagal memproses pembayaran');
 
-    const transactionId = `NMD-ID${Date.now()}${Math.floor(Math.random() * 1000)}`;
-    navigate('/pembayaran-premi', {
-      state: {
-        jenis: jenis,
-        noPolis: noPolis,
-        total: totalBayar,
-        transactionId: transactionId,
-      },
-    });
+      const data = await response.json();
+      // data berisi transactionId, dll sesuai respons backend
+      const transactionId = data.transactionId || `NMD-ID${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+      navigate('/pembayaran-premi', {
+        state: {
+          jenis: jenis,
+          noPolis: noPolis,
+          total: totalBayar,
+          transactionId: transactionId,
+        },
+      });
+    } catch (error) {
+      console.error('Error bayar premi:', error);
+      alert('Gagal memproses pembayaran. Silakan coba lagi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -104,8 +119,12 @@ export default function BayarPremi() {
             </div>
           </div>
 
-          <button onClick={handleBayarNow} className="w-full bg-sky-950 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg transition shadow-md">
-            Bayar Sekarang
+          <button
+            onClick={handleBayarNow}
+            disabled={loading}
+            className="w-full bg-sky-950 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg transition shadow-md disabled:opacity-50"
+          >
+            {loading ? 'Memproses...' : 'Bayar Sekarang'}
           </button>
         </div>
       </div>

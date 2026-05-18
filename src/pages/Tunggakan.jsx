@@ -1,14 +1,46 @@
 import { Link } from 'react-router-dom';
 import { FaArrowLeft, FaCheckCircle } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
 
 export default function Tunggakan() {
-  // Data dummy (dapat diambil dari localStorage nanti)
-  const totalTunggakan = 0;
-  const jumlahTagihan = 0;
+  const [totalTunggakan, setTotalTunggakan] = useState(0);
+  const [jumlahTagihan, setJumlahTagihan] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchTunggakan = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/nasabah/tunggakan', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data tunggakan');
+        const data = await response.json();
+        setTotalTunggakan(data.totalTunggakan || 0);
+        setJumlahTagihan(data.jumlahTagihan || 0);
+      } catch (err) {
+        console.error('Error fetching tunggakan:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTunggakan();
+  }, []);
+
+  if (loading) {
+    return <div className="max-w-4xl mx-auto p-6 text-center">Memuat data tunggakan...</div>;
+  }
+
+  if (error) {
+    return <div className="max-w-4xl mx-auto p-6 text-center text-red-600">Error: {error}</div>;
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Header */}
       <div className="bg-sky-950 rounded-2xl p-6 text-white shadow-lg flex items-center gap-4">
         <Link to="/dashboard" className="text-white hover:text-gray-300 transition">
             <FaArrowLeft size={18} />
@@ -16,17 +48,13 @@ export default function Tunggakan() {
         <h2 className="text-2xl font-semibold">Tunggakan</h2>
       </div>
 
-      {/* TOTAL TUNGGAKAN & JUMLAH TAGIHAN */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Kartu Total Tunggakan */}
         <div className="bg-white rounded-2xl shadow-md p-6 text-center">
           <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Total Tunggakan</p>
           <p className="text-4xl font-extrabold text-sky-900 mt-2">
             Rp {totalTunggakan.toLocaleString('id-ID')}
           </p>
         </div>
-
-        {/* Kartu Jumlah Tagihan */}
         <div className="bg-white rounded-2xl shadow-md p-6 text-center">
           <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Jumlah Tagihan</p>
           <p className="text-4xl font-extrabold text-sky-900 mt-2">
@@ -35,7 +63,6 @@ export default function Tunggakan() {
         </div>
       </div>
 
-      {/* Pesan jika tidak ada tunggakan */}
       {totalTunggakan === 0 && (
         <div className="bg-white/10 rounded-xl p-6 text-center">
           <div className="flex justify-center mb-3">

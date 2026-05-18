@@ -7,6 +7,8 @@ export default function PolisSaya() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [polisList, setPolisList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const getIconByJenis = (jenis) => {
     if (jenis.includes('Kesehatan')) return <FaHeartbeat className="text-red-500 text-3xl" />;
@@ -17,17 +19,29 @@ export default function PolisSaya() {
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem('userPolis');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      const withIcons = parsed.map(polis => ({
-        ...polis,
-        icon: getIconByJenis(polis.jenis)
-      }));
-      setPolisList(withIcons);
-    } else {
-      setPolisList([]);
-    }
+    const fetchPolis = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/nasabah/polis', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data polis');
+        const data = await response.json();
+        const withIcons = data.map(polis => ({
+          ...polis,
+          icon: getIconByJenis(polis.jenis)
+        }));
+        setPolisList(withIcons);
+      } catch (err) {
+        console.error('Error fetching polis:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPolis();
   }, []);
 
   const filteredPolis = polisList.filter(
@@ -35,6 +49,14 @@ export default function PolisSaya() {
       polis.jenis.toLowerCase().includes(searchTerm.toLowerCase()) ||
       polis.noPolis.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) {
+    return <div className="max-w-4xl mx-auto p-6 text-center">Memuat data polis...</div>;
+  }
+
+  if (error) {
+    return <div className="max-w-4xl mx-auto p-6 text-center text-red-600">Error: {error}</div>;
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

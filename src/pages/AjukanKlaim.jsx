@@ -17,16 +17,27 @@ export default function AjukanKlaim() {
   const [fileName, setFileName] = useState('');
   const [statusDraft, setStatusDraft] = useState('Draft Tersimpan');
   const [showPopup, setShowPopup] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  
+  // Ambil daftar polis dari API (bukan localStorage)
   useEffect(() => {
-    const stored = localStorage.getItem('userPolis');
-    if (stored) {
-      const polisArray = JSON.parse(stored);
-      setUserPolisList(polisArray);
-    } else {
-      setUserPolisList([]);
-    }
+    const fetchPolis = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/nasabah/polis', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil daftar polis');
+        const data = await response.json();
+        setUserPolisList(data);
+      } catch (error) {
+        console.error('Error fetching polis:', error);
+        setUserPolisList([]);
+      }
+    };
+    fetchPolis();
   }, []);
 
   const getAvailableClaimsByJenis = (jenis) => {
@@ -75,7 +86,7 @@ export default function AjukanKlaim() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.polisId || !formData.jenisKlaim || !formData.jumlah || !formData.tanggalKejadian || !formData.deskripsi || !formData.dokumen) {
       alert('Harap lengkapi semua data!');
@@ -88,34 +99,36 @@ export default function AjukanKlaim() {
       return;
     }
 
-    const newClaim = {
-      id: Date.now(),
-      jenis: selectedPolis.jenis,
-      noPolis: selectedPolis.noPolis,
-      tglPengajuan: formatTanggalFull(new Date()),
-      tglPencairan: 'Menunggu Verifikasi',
-      status: 'DIPROSES',
-      jumlah: `Rp ${parseInt(formData.jumlah || 0).toLocaleString('id-ID')}`,
-    };
-    const existingClaims = JSON.parse(localStorage.getItem('userKlaim') || '[]');
-    existingClaims.push(newClaim);
-    localStorage.setItem('userKlaim', JSON.stringify(existingClaims));
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const formDataToSend = new FormData();
+      formDataToSend.append('polisId', formData.polisId);
+      formDataToSend.append('jenisKlaim', formData.jenisKlaim);
+      formDataToSend.append('jumlah', formData.jumlah);
+      formDataToSend.append('tanggalKejadian', formData.tanggalKejadian);
+      formDataToSend.append('deskripsi', formData.deskripsi);
+      if (formData.dokumen) formDataToSend.append('dokumen', formData.dokumen);
 
-    const newTransaction = {
-    id: Date.now(),
-    nama: `Klaim ${selectedPolis.jenis}`,
-    nominal: parseInt(formData.jumlah),
-    tanggal: formatTanggalForTransaction(new Date()),
-    tipe: 'klaim',
-    noPolis: selectedPolis.noPolis,
-    };
-    const existingTrans = JSON.parse(localStorage.getItem('userTransaksi') || '[]');
-    existingTrans.push(newTransaction);
-    localStorage.setItem('userTransaksi', JSON.stringify(existingTrans));
+      const response = await fetch('/api/klaim', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formDataToSend
+      });
+      if (!response.ok) throw new Error('Gagal mengajukan klaim');
+      const result = await response.json();
 
-    console.log('Data Klaim:', formData);
-    setStatusDraft('Draft Terkirim');
-    setShowPopup(true);
+      console.log('Klaim berhasil:', result);
+      setStatusDraft('Draft Terkirim');
+      setShowPopup(true);
+    } catch (error) {
+      console.error('Error submitting claim:', error);
+      alert('Gagal mengajukan klaim. Silakan coba lagi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoToStatus = () => {
@@ -256,6 +269,7 @@ export default function AjukanKlaim() {
             </div>
             <button
               type="submit"
+              disabled={loading}
               className="w-full flex items-center justify-center gap-2 bg-sky-950 hover:bg-sky-800 text-white font-bold py-3 px-4 rounded-xl transition"
             >
               Ajukan Klaim

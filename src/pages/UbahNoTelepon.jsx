@@ -5,20 +5,15 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 export default function UbahTelepon() {
   const navigate = useNavigate();
   
-  // State untuk input
   const [newPhone, setNewPhone] = useState('');
   const [confirmPhone, setConfirmPhone] = useState('');
-  
-  // State untuk toggle lihat nomor
   const [showNumber, setShowNumber] = useState(false);
   const [showConfirmNumber, setShowConfirmNumber] = useState(false);
-  
-  // State untuk Pop-up & Error Message
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [confirmError, setConfirmError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Logika Validasi
   const validate = () => {
     let isValid = true;
     const isNumeric = /^[0-9]+$/.test(newPhone);
@@ -34,7 +29,7 @@ export default function UbahTelepon() {
     }
 
     if (confirmPhone !== newPhone) {
-      setConfirmError('Format nomor tidak valid');
+      setConfirmError('Konfirmasi nomor telepon tidak cocok.');
       isValid = false;
     } else {
       setConfirmError('');
@@ -43,20 +38,37 @@ export default function UbahTelepon() {
     return isValid;
   };
 
-  const handleSave = () => {
-    if (validate()) {
+  const handleSave = async () => {
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/nasabah/ubah-telepon', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ newPhone })
+      });
+      if (!response.ok) throw new Error('Gagal memperbarui nomor telepon');
       setShowSuccessPopup(true);
+    } catch (error) {
+      console.error('Error updating phone:', error);
+      alert('Gagal memperbarui nomor telepon. Silakan coba lagi.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSuccessOk = () => {
     setShowSuccessPopup(false);
-    navigate('/profil');
+    navigate('/profil', { state: { phoneUpdateSuccess: true } });
   };
 
   return (
     <div className="max-w-md mx-auto space-y-6 pb-10">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
         </button>
@@ -64,8 +76,6 @@ export default function UbahTelepon() {
       </div>
 
       <div className="bg-white rounded-xl shadow-md p-5 space-y-5">
-        
-        {/* Nomor Telepon Baru */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">No. Telepon Baru</label>
           <div className="relative">
@@ -77,7 +87,7 @@ export default function UbahTelepon() {
                 if (phoneError) setPhoneError('');
               }}
               className={`w-full border ${phoneError ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500`}
-              placeholder="+62 8xx-xxxx-xxxx"
+              placeholder="81234567890"
             />
             <button
               type="button"
@@ -90,7 +100,6 @@ export default function UbahTelepon() {
           {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
         </div>
 
-        {/* Konfirmasi No. Telepon Baru  */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Konfirmasi No. Telepon Baru</label>
           <div className="relative">
@@ -102,7 +111,7 @@ export default function UbahTelepon() {
                 if (confirmError) setConfirmError('');
               }}
               className={`w-full border ${confirmError ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500`}
-              placeholder="+62 8xx-xxxx-xxxx"
+              placeholder="81234567890"
             />
             <button
               type="button"
@@ -118,13 +127,13 @@ export default function UbahTelepon() {
           )}
         </div>
 
-        {/* Tombol Simpan & Batal */}
         <div className="flex gap-3 pt-2">
           <button
             onClick={handleSave}
-            className="flex-1 bg-sky-950 hover:bg-sky-800 text-white font-semibold py-2 rounded-lg transition"
+            disabled={loading}
+            className="flex-1 bg-sky-950 hover:bg-sky-800 text-white font-semibold py-2 rounded-lg transition disabled:opacity-50"
           >
-            Simpan
+            {loading ? 'Menyimpan...' : 'Simpan'}
           </button>
           <button
             onClick={() => navigate(-1)}
@@ -135,7 +144,6 @@ export default function UbahTelepon() {
         </div>
       </div>
 
-      {/* Popup Success */}
       {showSuccessPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5">

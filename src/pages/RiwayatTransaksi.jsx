@@ -8,22 +8,32 @@ import {
 export default function RiwayatTransaksi() {
   const [transaksi, setTransaksi] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('userTransaksi');
-    if (stored) {
+    const fetchTransaksi = async () => {
       try {
-        const data = JSON.parse(stored);
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/riwayat-transaksi', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil data transaksi');
+        const data = await response.json();
         // Urutkan berdasarkan tanggal terbaru
         data.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
         setTransaksi(data);
-      } catch (e) {
-        console.error('Gagal parse transaksi:', e);
+      } catch (err) {
+        console.error('Error fetching transaksi:', err);
+        setError(err.message);
         setTransaksi([]);
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setTransaksi([]);
-    }
+    };
+    fetchTransaksi();
   }, []);
 
   const getIcon = (tipe) => {
@@ -35,48 +45,48 @@ export default function RiwayatTransaksi() {
     return <FaFileInvoiceDollar className="text-gray-500 text-2xl" />;
   };
 
-  // Kelompokkan transaksi
   const groupByMonth = (data) => {
-  const grouped = {};
-  data.forEach(item => {
-    // Coba parsing dengan berbagai format
-    let date = new Date(item.tanggal);
-    if (isNaN(date)) {
-      const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, Mei: 4, May: 4, Jun: 5, Jul: 6, Agu: 7, Aug: 7, Sep: 8, Okt: 9, Oct: 9, Nov: 10, Des: 11, Dec: 11 };
-      const parts = item.tanggal.split(' ');
-      if (parts.length === 3) {
-        const day = parseInt(parts[0]);
-        const month = months[parts[1]];
-        const year = parseInt(parts[2]);
-        if (!isNaN(day) && month !== undefined && !isNaN(year)) {
-          date = new Date(year, month, day);
+    const grouped = {};
+    data.forEach(item => {
+      let date = new Date(item.tanggal);
+      if (isNaN(date)) {
+        const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, Mei: 4, May: 4, Jun: 5, Jul: 6, Agu: 7, Aug: 7, Sep: 8, Okt: 9, Oct: 9, Nov: 10, Des: 11, Dec: 11 };
+        const parts = item.tanggal.split(' ');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const month = months[parts[1]];
+          const year = parseInt(parts[2]);
+          if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+            date = new Date(year, month, day);
+          }
         }
       }
-    }
-    if (isNaN(date)) return;
-    const monthYear = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }).toUpperCase();
-    if (!grouped[monthYear]) grouped[monthYear] = [];
-    grouped[monthYear].push(item);
-  });
-  return grouped;
-};
+      if (isNaN(date)) return;
+      const monthYear = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }).toUpperCase();
+      if (!grouped[monthYear]) grouped[monthYear] = [];
+      grouped[monthYear].push(item);
+    });
+    return grouped;
+  };
 
   const grouped = groupByMonth(transaksi);
   const months = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
-
-  // Filter bulan
   const filteredMonths = selectedMonth
     ? months.filter(m => m.includes(selectedMonth.toUpperCase()))
     : months;
 
-  // Format nominal 
   const formatNominal = (nominal, tipe) => {
     const formatted = `Rp ${nominal.toLocaleString('id-ID')}`;
-    if (tipe === 'klaim') {
-      return <span className="text-black font-bold">{formatted}</span>;
-    }
     return <span className="text-black font-bold">{formatted}</span>;
   };
+
+  if (loading) {
+    return <div className="max-w-4xl mx-auto p-6 text-center">Memuat riwayat transaksi...</div>;
+  }
+
+  if (error) {
+    return <div className="max-w-4xl mx-auto p-6 text-center text-red-600">Error: {error}</div>;
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-10 px-4">

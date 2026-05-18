@@ -82,7 +82,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 relative">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-sky-900 mb-6 text-center">Daftar Akun </h1>
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
