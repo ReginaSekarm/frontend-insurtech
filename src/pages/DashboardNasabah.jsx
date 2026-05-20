@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaShoppingCart, FaHistory, FaClipboardList, FaFileInvoice, FaWallet, FaUser, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import { Shield } from 'lucide-react';
+import { api } from '../lib/api'; // 1. IMPORT API HELPER DI SINI
 
 export default function DashboardNasabah() {
   const [user, setUser] = useState({ name: 'Nasabah' });
@@ -29,13 +30,14 @@ export default function DashboardNasabah() {
 
     const fetchDashboardData = async () => {
       try {
-        const response = await fetch('/api/nasabah/dashboard', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        if (!response.ok) throw new Error('Gagal mengambil data dashboard');
-        const data = await response.json();
+        // 2. AMBIL TOKEN
+        const token = localStorage.getItem('token');
+        
+        // 3. GUNAKAN FUNGSI API (Bukan fetch biasa)
+        // Note: Pastikan path endpoint di bawah ini sesuai dengan backend kamu. 
+        // Jika backendmu butuh prefix '/api', ubah menjadi '/api/nasabah/dashboard'
+        const { data } = await api('/nasabah/dashboard', 'GET', null, token);
+        
         setStats({
           polisAktif: data.polisAktif || 0,
           totalPolis: data.totalPolis || 0,
@@ -45,7 +47,7 @@ export default function DashboardNasabah() {
         setAktivitas(data.aktivitas || []);
       } catch (err) {
         console.error('Error fetching dashboard:', err);
-        setError(err.message);
+        setError(err.message || 'Terjadi kesalahan saat mengambil data');
       } finally {
         setLoading(false);
       }
