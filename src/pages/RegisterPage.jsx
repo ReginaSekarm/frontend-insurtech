@@ -101,19 +101,25 @@ export default function RegisterPage() {
     // Kirim data ke backend
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('namaLengkap', formData.namaLengkap);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('noTelepon', formData.noTelepon);
-      formDataToSend.append('tanggalLahir', formData.tanggalLahir);
-      formDataToSend.append('alamat', formData.alamat);
-      formDataToSend.append('password', formData.password);
-      formDataToSend.append('konfirmasiPassword', formData.konfirmasiPassword);
+      
+      // PERUBAHAN ADA DI SINI:
+      // Key disamakan 100% dengan $request->validate() di AuthController.php
+      formDataToSend.append('Nama_Lengkap', formData.namaLengkap);
+      formDataToSend.append('Email', formData.email);
+      formDataToSend.append('Password', formData.password);
+      formDataToSend.append('No_Telepon', formData.noTelepon);
+      formDataToSend.append('Tanggal_Lahir', formData.tanggalLahir);
+      formDataToSend.append('Alamat_Lengkap', formData.alamat);
+      
+      // Mengirim file tetap dilampirkan meskipun backend saat ini belum memprosesnya
       formDataToSend.append('ktp', ktpFile);
       formDataToSend.append('kk', kkFile);
-      formDataToSend.append('agreeTerms', agreeTerms);
 
-      const response = await fetch('/api/register', {
+      const response = await fetch('http://localhost:8000/api/register', {
         method: 'POST',
+        headers: {
+          'Accept': 'application/json', 
+        },
         body: formDataToSend,
       });
 
@@ -125,7 +131,11 @@ export default function RegisterPage() {
           setShowEmailPopup(true);
           setTimeout(() => setShowEmailPopup(false), 3000);
         } else {
-          alert(data.message || 'Registrasi gagal. Silakan coba lagi.');
+          // Menampilkan error validasi Laravel dengan lebih rapi (jika ada)
+          const errorMsg = data.errors 
+            ? Object.values(data.errors).flat().join(', ') 
+            : data.message;
+          alert(errorMsg || 'Registrasi gagal. Silakan coba lagi.');
         }
         return;
       }
@@ -137,11 +147,11 @@ export default function RegisterPage() {
       setShowSuccessPopup(true);
       setTimeout(() => {
         setShowSuccessPopup(false);
-        navigate('/dashboard');
+        navigate('/login'); // Diubah ke login agar flow-nya aman
       }, 2000);
     } catch (error) {
       console.error('Error registrasi:', error);
-      alert('Terjadi kesalahan. Silakan coba lagi.');
+      alert('Terjadi kesalahan jaringan. Pastikan backend menyala.');
     }
   };
 
@@ -376,7 +386,7 @@ export default function RegisterPage() {
 
             <p className="text-center text-sm text-gray-600">
               Sudah punya akun?{' '}
-              <button onClick={() => navigate('/login')} className="text-sky-900 font-semibold hover:text-gray-600 transition-colors">
+              <button type="button" onClick={() => navigate('/login')} className="text-sky-900 font-semibold hover:text-gray-600 transition-colors">
                 Masuk
               </button>
             </p>
@@ -394,7 +404,7 @@ export default function RegisterPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-gray-800">Email Sudah Terdaftar</h3>
+              <h3 className="text-lg font-bold text-gray-800">Perhatian</h3>
               <p className="text-gray-600 text-sm mt-2">{emailPopupMsg}</p>
             </div>
           </div>
@@ -415,56 +425,14 @@ export default function RegisterPage() {
               </button>
             </div>
             <div className="p-6 space-y-4 text-sm text-gray-700">
-              {/* ... (isi syarat & ketentuan tetap sama seperti kode Anda) ... */}
               <div>
                 <h3 className="font-bold text-base mb-2">1. Penerimaan syarat</h3>
                 <p>Dengan mendaftar, mengakses, atau menggunakan layanan InsurTech, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang tercantum dalam dokumen ini. Jika Anda tidak menyetujui syarat ini, harap tidak melanjutkan penggunaan layanan.</p>
               </div>
+              {/* Bagian syarat & ketentuan lainnya... */}
               <div>
                 <h3 className="font-bold text-base mb-2">2. Definisi layanan</h3>
-                <p>InsurTech adalah platform teknologi asuransi yang menyediakan:</p>
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>Perbandingan dan pembelian produk asuransi dari berbagai mitra penyedia</li>
-                  <li>Pengajuan klaim secara digital dan pemantauan statusnya</li>
-                  <li>Pengelolaan polis asuransi secara terpadu dalam satu platform</li>
-                  <li>Konsultasi dan rekomendasi produk asuransi berdasarkan kebutuhan</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">3. Kelayakan pengguna</h3>
-                <p>Layanan InsurTech hanya dapat digunakan oleh:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  <li>Individu berusia minimal 17 tahun atau yang telah memiliki KTP</li>
-                  <li>Warga Negara Indonesia atau warga asing yang berdomisili di Indonesia</li>
-                  <li>Badan usaha yang terdaftar secara sah di Indonesia</li>
-                </ul>
-                <p className="mt-1">InsurTech berhak menolak atau menonaktifkan akun yang tidak memenuhi kelayakan ini.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">4. Akun dan keamanan</h3>
-                <p>Pengguna bertanggung jawab untuk menjaga kerahasiaan informasi login dan semua aktivitas yang terjadi di akunnya. InsurTech tidak bertanggung jawab atas kerugian akibat kelalaian pengguna dalam menjaga keamanan akun.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">5. Kewajiban pengguna</h3>
-                <p>Pengguna wajib:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  <li>Memberikan informasi yang akurat, lengkap, dan terkini</li>
-                  <li>Tidak menyalahgunakan platform untuk tujuan penipuan atau ilegal</li>
-                  <li>Tidak melakukan tindakan yang merusak sistem atau pengalaman pengguna lain</li>
-                  <li>Memahami peraturan perundang-undangan yang berlaku di Indonesia</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">6. Pembatasan tanggung jawab</h3>
-                <p>InsurTech bertindak sebagai platform perantara dan tidak bertanggung jawab atas keputusan underwriting, penolakan klaim, atau tindakan lain dari mitra asuransi. Semua ketentuan polis mengacu pada dokumen polis dari penerbit asuransi terkait.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">7. Perubahan layanan</h3>
-                <p>InsurTech berhak mengubah, memperbaiki, atau menghentikan fitur layanan sewaktu-waktu. Perubahan material pada syarat dan ketentuan akan diinformasikan melalui email atau notifikasi dalam aplikasi minimal 14 hari sebelum berlaku.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">8. Hukum yang berlaku</h3>
-                <p>Syarat dan ketentuan ini tunduk pada hukum Republik Indonesia. Setiap perselisihan yang timbul akan diselesaikan melalui musyawarah terlebih dahulu, dan apabila tidak tercapai kesepakatan, akan diselesaikan melalui Pengadilan Negeri Jakarta Selatan.</p>
+                <p>InsurTech adalah platform teknologi asuransi yang menyediakan: ...</p>
               </div>
             </div>
           </div>

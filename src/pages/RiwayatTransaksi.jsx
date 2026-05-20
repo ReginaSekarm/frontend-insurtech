@@ -4,6 +4,7 @@ import {
   FaHandHoldingUsd,
   FaFileInvoiceDollar,
 } from 'react-icons/fa';
+import { api } from '../lib/api'; // TAMBAHAN: Import fungsi api
 
 export default function RiwayatTransaksi() {
   const [transaksi, setTransaksi] = useState([]);
@@ -15,20 +16,25 @@ export default function RiwayatTransaksi() {
     const fetchTransaksi = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/riwayat-transaksi', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (!response.ok) throw new Error('Gagal mengambil data transaksi');
-        const data = await response.json();
+        
+        // PERUBAHAN: Gunakan fungsi api()
+        // Pastikan endpoint '/riwayat-transaksi' sudah ada di routes/api.php backend kamu ya
+        const response = await api('/riwayat-transaksi', 'GET', null, token);
+        
+        // Amankan data, pastikan bentuknya array
+        const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+        
         // Urutkan berdasarkan tanggal terbaru
-        data.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+        data.sort((a, b) => new Date(b.tanggal || b.created_at) - new Date(a.tanggal || a.created_at));
         setTransaksi(data);
       } catch (err) {
         console.error('Error fetching transaksi:', err);
-        setError(err.message);
-        setTransaksi([]);
+        // Jika endpoint belum ada (404), kita anggap saja belum ada transaksi
+        if (err.message && err.message.includes('404')) {
+          setTransaksi([]);
+        } else {
+          setError(err.message || 'Gagal mengambil data transaksi');
+        }
       } finally {
         setLoading(false);
       }
@@ -37,9 +43,10 @@ export default function RiwayatTransaksi() {
   }, []);
 
   const getIcon = (tipe) => {
-    if (tipe === 'premi') {
+    const t = (tipe || '').toLowerCase();
+    if (t.includes('premi')) {
       return <FaMoneyBillWave className="text-green-500 text-2xl" />;
-    } else if (tipe === 'klaim') {
+    } else if (t.includes('klaim')) {
       return <FaHandHoldingUsd className="text-blue-500 text-2xl" />;
     }
     return <FaFileInvoiceDollar className="text-gray-500 text-2xl" />;
@@ -48,10 +55,14 @@ export default function RiwayatTransaksi() {
   const groupByMonth = (data) => {
     const grouped = {};
     data.forEach(item => {
-      let date = new Date(item.tanggal);
+      // Gunakan tanggal atau created_at dari backend
+      const itemDate = item.tanggal || item.created_at;
+      if (!itemDate) return;
+
+      let date = new Date(itemDate);
       if (isNaN(date)) {
         const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, Mei: 4, May: 4, Jun: 5, Jul: 6, Agu: 7, Aug: 7, Sep: 8, Okt: 9, Oct: 9, Nov: 10, Des: 11, Dec: 11 };
-        const parts = item.tanggal.split(' ');
+        const parts = itemDate.split(' ');
         if (parts.length === 3) {
           const day = parseInt(parts[0]);
           const month = months[parts[1]];
@@ -62,6 +73,7 @@ export default function RiwayatTransaksi() {
         }
       }
       if (isNaN(date)) return;
+      
       const monthYear = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }).toUpperCase();
       if (!grouped[monthYear]) grouped[monthYear] = [];
       grouped[monthYear].push(item);
@@ -70,13 +82,20 @@ export default function RiwayatTransaksi() {
   };
 
   const grouped = groupByMonth(transaksi);
-  const months = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+  const months = Object.keys(grouped).sort((a, b) => {
+    // Parsing string "BULAN TAHUN" kembali ke Date untuk disortir
+    const dateA = new Date(`1 ${a}`);
+    const dateB = new Date(`1 ${b}`);
+    return dateB - dateA;
+  });
+  
   const filteredMonths = selectedMonth
     ? months.filter(m => m.includes(selectedMonth.toUpperCase()))
     : months;
 
-  const formatNominal = (nominal, tipe) => {
-    const formatted = `Rp ${nominal.toLocaleString('id-ID')}`;
+  const formatNominal = (nominal) => {
+    const num = Number(nominal) || 0;
+    const formatted = `Rp ${num.toLocaleString('id-ID')}`;
     return <span className="text-black font-bold">{formatted}</span>;
   };
 
@@ -129,16 +148,17 @@ export default function RiwayatTransaksi() {
               <div className="space-y-4">
                 {grouped[month].map((trx, idx) => (
                   <div key={idx} className="flex gap-4 items-start">
-                    <div className="mt-1">{getIcon(trx.tipe)}</div>
+                    <div className="mt-1">{getIcon(trx.tipe || trx.Jenis_Transaksi)}</div>
                     <div className="flex-1">
                       <div className="flex flex-wrap justify-between items-start">
                         <div>
-                          <p className="font-semibold text-gray-800">{trx.nama}</p>
+                          <p className="font-semibold text-gray-800">{trx.nama || trx.Nama_Transaksi || 'Transaksi'}</p>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            {trx.noPolis ? `${trx.noPolis} · ` : ''}{trx.tanggal}
+                            {trx.noPolis || trx.ID_Polis ? `${trx.noPolis || trx.ID_Polis} · ` : ''}
+                            {trx.tanggal || trx.created_at}
                           </p>
                         </div>
-                        {formatNominal(trx.nominal, trx.tipe)}
+                        {formatNominal(trx.nominal || trx.Nominal)}
                       </div>
                     </div>
                   </div>

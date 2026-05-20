@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaHeartbeat, FaHome, FaCar, FaGraduationCap, FaTrash } from 'react-icons/fa';
+import { api } from '../lib/api'; 
 
 const statusColor = {
   Aktif: 'bg-green-100 text-green-700',
@@ -30,19 +31,37 @@ export default function AdminProduk() {
     const fetchProducts = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/admin/produk', {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const response = await api('/produk', 'GET', null, token);
+        const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+        
+        // JALAN AMAN: Normalisasi semua teks dari database ke format standar frontend
+        const withIcons = data.map(p => {
+          const rawStatus = (p.status || p.Status_Produk || 'draft').toLowerCase();
+          
+          let normalizedStatus = 'Draft';
+          if (rawStatus === 'published' || rawStatus === 'aktif') normalizedStatus = 'Aktif';
+          if (rawStatus === 'archived' || rawStatus === 'nonaktif') normalizedStatus = 'Nonaktif';
+
+          const rawPremi = p.Harga_Premi || p.premi || 0;
+          const formattedPremi = typeof rawPremi === 'number' 
+            ? `Rp ${rawPremi.toLocaleString('id-ID')}` 
+            : rawPremi;
+
+          return {
+            id: p.ID_Produk || p.id,
+            nama: p.Nama_Produk || p.nama || 'Produk Tanpa Nama',
+            kategori: p.Kategori_Produk || p.kategori || 'Umum',
+            premi: formattedPremi,
+            maks: p.Maksimal_Klaim || p.maks || '-',
+            status: normalizedStatus, 
+            icon: getIconByKategori(p.Kategori_Produk || p.kategori)
+          };
         });
-        if (!response.ok) throw new Error('Gagal mengambil data produk');
-        const data = await response.json();
-        const withIcons = data.map(p => ({
-          ...p,
-          icon: getIconByKategori(p.kategori)
-        }));
+        
         setProducts(withIcons);
       } catch (err) {
         console.error('Error fetching products:', err);
-        setError(err.message);
+        setError(err.message || 'Gagal mengambil data produk');
       } finally {
         setLoading(false);
       }
@@ -89,26 +108,18 @@ export default function AdminProduk() {
     navigate('/admin-tambah-produk', { state: { mode: 'add' } });
   };
 
-  // Hapus produk via API
   const handleDelete = async (id, nama) => {
     if (!window.confirm(`Apakah Anda yakin ingin menghapus produk "${nama}"?`)) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/produk/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!response.ok) throw new Error('Gagal menghapus produk');
-      // Hapus dari state lokal
+      await api(`/admin/produk/${id}`, 'DELETE', null, token);
       setProducts(products.filter(p => p.id !== id));
+      alert(`Produk "${nama}" berhasil dihapus.`);
     } catch (err) {
       console.error('Error deleting product:', err);
-      alert('Gagal menghapus produk. Silakan coba lagi.');
+      alert(err.message || 'Gagal menghapus produk. Silakan coba lagi.');
     }
   };
-
-  if (loading) return <div className="p-6 text-center">Memuat data produk...</div>;
-  if (error) return <div className="p-6 text-center text-red-600">Error: {error}</div>;
 
   return (
     <div className="space-y-6">
@@ -127,9 +138,9 @@ export default function AdminProduk() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Produk', value: products.length, sub: '+1 bulan ini', color: 'text-green-600' },
-          { label: 'Produk Aktif', value: products.filter(p => p.status === 'Aktif').length, sub: `${Math.round((products.filter(p => p.status === 'Aktif').length / products.length) * 100)}% dari total`, color: 'text-green-600' },
+          { label: 'Produk Aktif', value: products.filter(p => p.status === 'Aktif').length, sub: products.length > 0 ? `${Math.round((products.filter(p => p.status === 'Aktif').length / products.length) * 100)}% dari total` : '0%', color: 'text-green-600' },
           { label: 'Draft', value: products.filter(p => p.status === 'Draft').length, sub: 'Menunggu publikasi', color: 'text-yellow-400' },
-          { label: 'Review Klaim', value: '5', sub: 'Perlu ditinjau!', color: 'text-red-500' },
+          { label: 'Review Klaim', value: '0', sub: 'Perlu ditinjau!', color: 'text-red-500' },
         ].map(({ label, value, sub, color }) => (
           <div key={label} className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500 font-medium">{label}</p>
@@ -155,48 +166,65 @@ export default function AdminProduk() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-gray-300 text-left">
-              <th className="px-6 py-3 text-xs font-bold text-black uppercase">Nama Produk</th>
-              <th className="px-6 py-3 text-xs font-bold text-black uppercase">Kategori</th>
-              <th className="px-6 py-3 text-xs font-bold text-black uppercase">Premi/Bln</th>
-              <th className="px-6 py-3 text-xs font-bold text-black uppercase">Maks. Klaim</th>
-              <th className="px-6 py-3 text-xs font-bold text-black uppercase">Status</th>
-              <th className="px-6 py-3 text-xs font-bold text-black uppercase">Aksi</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-gray-300 text-left">
+                <th className="px-6 py-3 text-xs font-bold text-black uppercase">Nama Produk</th>
+                <th className="px-6 py-3 text-xs font-bold text-black uppercase">Kategori</th>
+                <th className="px-6 py-3 text-xs font-bold text-black uppercase">Premi/Bln</th>
+                <th className="px-6 py-3 text-xs font-bold text-black uppercase">Maks. Klaim</th>
+                <th className="px-6 py-3 text-xs font-bold text-black uppercase">Status</th>
+                <th className="px-6 py-3 text-xs font-bold text-black uppercase">Aksi</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-gray-100">
-              {currentProducts.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4"><div className="flex items-center gap-2">{item.icon}<span className="font-medium text-gray-800">{item.nama}</span></div></td>
-                  <td className="px-6 py-4 text-gray-800">{item.kategori}</td>
-                  <td className="px-6 py-4 text-gray-800">{item.premi}</td>
-                  <td className="px-6 py-4 text-gray-800">{item.maks}</td>
-                  <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor[item.status]}`}>{item.status}</span></td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => handleEdit(item)} className={`${item.status === 'Draft' ? 'bg-white border border-gray-300 text-gray-700 hover:bg-sky-800' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'} text-xs font-semibold px-3 py-1.5 rounded-lg transition`}>
-                        {item.status === 'Draft' ? 'Publikasi' : 'Edit'}
-                      </button>
-                      {item.status === 'Nonaktif' && (
-                        <button
-                          onClick={() => handleDelete(item.id, item.nama)}
-                          className="text-red-600 hover:text-red-800 transition"
-                          title="Hapus produk"
-                        >
-                          <FaTrash size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+              {currentProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-gray-500">Belum ada data produk</td>
                 </tr>
-              ))}
+              ) : (
+                currentProducts.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {item.icon}
+                        <span className="font-medium text-gray-800">{item.nama}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-800">{item.kategori}</td>
+                    <td className="px-6 py-4 text-gray-800">{item.premi}</td>
+                    <td className="px-6 py-4 text-gray-800">{item.maks}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor[item.status] || 'bg-gray-100 text-gray-700'}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleEdit(item)} className={`${item.status === 'Draft' ? 'bg-white border border-gray-300 text-gray-700 hover:bg-sky-800 hover:text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'} text-xs font-semibold px-3 py-1.5 rounded-lg transition`}>
+                          {item.status === 'Draft' ? 'Publikasi' : 'Edit'}
+                        </button>
+                        {item.status === 'Nonaktif' && (
+                          <button
+                            onClick={() => handleDelete(item.id, item.nama)}
+                            className="text-red-600 hover:text-red-800 transition"
+                            title="Hapus produk"
+                          >
+                            <FaTrash size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
         <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center">
-          <p className="text-xs text-gray-500">Halaman {currentPage} dari {totalPages}</p>
+          <p className="text-xs text-gray-500">Halaman {currentPage} dari {totalPages || 1}</p>
           <div className="flex gap-1">
             <button onClick={goToPrev} disabled={currentPage === 1} className="w-7 h-7 border border-gray-300 rounded text-xs hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">‹</button>
-            <button onClick={goToNext} disabled={currentPage === totalPages} className="w-7 h-7 border border-gray-300 rounded text-xs hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">›</button>
+            <button onClick={goToNext} disabled={currentPage === totalPages || totalPages === 0} className="w-7 h-7 border border-gray-300 rounded text-xs hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">›</button>
           </div>
         </div>
       </div>

@@ -7,7 +7,8 @@ export default function AdminTambahProduk() {
   const location = useLocation();
   const { mode, product } = location.state || { mode: 'add', product: null };
 
-  const [status, setStatus] = useState('aktif');
+  // Sesuaikan default state dengan nilai yang diterima backend Laravel
+  const [status, setStatus] = useState('draft');
   const [formData, setFormData] = useState({
     namaProduk: '',
     kategori: '',
@@ -31,16 +32,17 @@ export default function AdminTambahProduk() {
   useEffect(() => {
     if (mode === 'edit' && product) {
       setFormData({
-        namaProduk: product.nama || '',
-        kategori: product.kategori || '',
-        premi: product.premi?.replace(/[^0-9]/g, '') || '',
-        maksKlaim: product.maks?.replace(/[^0-9]/g, '') || '',
+        namaProduk: product.nama || product.Nama_Produk || '',
+        kategori: product.kategori || product.Kategori_Produk || '',
+        premi: (product.premi || product.Harga_Premi || '')?.toString().replace(/[^0-9]/g, '') || '',
+        maksKlaim: (product.maks || product.Maksimal_Klaim || '')?.toString().replace(/[^0-9]/g, '') || '',
         masaTunggu: product.masaTunggu || '',
-        deskripsi: product.deskripsi || '',
+        deskripsi: product.deskripsi || product.Deskripsi_Produk || '',
       });
       if (product.status) {
-        const statusMap = { Aktif: 'aktif', Draft: 'draft', Nonaktif: 'nonaktif' };
-        setStatus(statusMap[product.status] || 'aktif');
+        // Konversi dari database (published/draft/archived) ke state komponen
+        const statusMap = { published: 'published', draft: 'draft', archived: 'archived', Aktif: 'published', Nonaktif: 'archived' };
+        setStatus(statusMap[product.status] || 'draft');
       }
     }
   }, [mode, product]);
@@ -52,8 +54,6 @@ export default function AdminTambahProduk() {
     if (!formData.namaProduk.trim()) errors.push('Nama Produk harus diisi');
     if (!formData.kategori) errors.push('Kategori harus dipilih');
     if (!formData.premi || parseInt(formData.premi) <= 0) errors.push('Premi / Bulan harus diisi dengan angka > 0');
-    if (!formData.maksKlaim || parseInt(formData.maksKlaim) <= 0) errors.push('Maks. Klaim harus diisi dengan angka > 0');
-    if (!formData.masaTunggu || parseInt(formData.masaTunggu) <= 0) errors.push('Masa Tunggu (Hari) harus diisi dengan angka > 0');
     if (!formData.deskripsi.trim()) errors.push('Deskripsi harus diisi');
     return errors;
   };
@@ -69,37 +69,55 @@ export default function AdminTambahProduk() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const productData = {
-        nama: formData.namaProduk,
-        kategori: formData.kategori,
-        premi: parseInt(formData.premi || 0),
-        maksKlaim: parseInt(formData.maksKlaim || 0),
-        status: status === 'aktif' ? 'Aktif' : status === 'draft' ? 'Draft' : 'Nonaktif',
-        masaTunggu: parseInt(formData.masaTunggu || 0),
-        deskripsi: formData.deskripsi,
-      };
+      const submitData = new FormData();
+      
+      // PERUBAHAN UTAMA: Sesuaikan key dengan aturan validasi di Laravel ($request->validate)
+      submitData.append('Nama_Produk', formData.namaProduk);
+      submitData.append('Deskripsi_Produk', formData.deskripsi);
+      submitData.append('Harga_Premi', parseInt(formData.premi || 0));
+      
+      // Jika mode edit, kirimkan status yang valid untuk backend (draft, published, archived)
+      // Jika tipe tombol klik adalah 'publish', paksa status menjadi 'published'
+      const finalStatus = type === 'publish' ? 'published' : status;
+      submitData.append('status', finalStatus);
 
-      let url = '/api/admin/produk';
-      let method = 'POST';
-      if (mode === 'edit') {
-        url = `/api/admin/produk/${product.id}`;
-        method = 'PUT';
+      // Sesuai model di backend Anda, jika ada field tambahan silakan disesuaikan
+      if (formData.kategori) submitData.append('Kategori_Produk', formData.kategori);
+      if (formData.maksKlaim) submitData.append('Maksimal_Klaim', parseInt(formData.maksKlaim || 0));
+      if (formData.masaTunggu) submitData.append('Masa_Tunggu', parseInt(formData.masaTunggu || 0));
+      
+      if (pdfFile) {
+         submitData.append('pdfFile', pdfFile);
       }
 
+      if (mode === 'edit') {
+         submitData.append('_method', 'PUT'); 
+      }
+
+      const baseUrl = 'http://127.0.0.1:8000';
+      const url = mode === 'edit'
+        ? `${baseUrl}/api/admin/produk/${product.id || product.ID_Produk}`
+        : `${baseUrl}/api/admin/produk`;
+
       const response = await fetch(url, {
-        method,
+        method: 'POST', 
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         },
-        body: JSON.stringify(productData)
+        body: submitData
       });
-      if (!response.ok) throw new Error('Gagal menyimpan produk');
+
+      if (!response.ok) {
+         const err = await response.json();
+         throw new Error(err.message || 'Gagal menyimpan produk');
+      }
+      
       alert(`Produk berhasil ${type === 'publish' ? 'dipublikasikan' : 'disimpan sebagai draft'}`);
       navigate('/admin-produk');
     } catch (err) {
       console.error('Error saving product:', err);
-      alert('Gagal menyimpan produk. Silakan coba lagi.');
+      alert(err.message || 'Gagal menyimpan produk. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -125,10 +143,10 @@ export default function AdminTambahProduk() {
             <select name="kategori" value={formData.kategori} onChange={handleChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-gray-50">
               <option value="">Pilih</option>
-              <option>Kesehatan</option>
-              <option>Properti</option>
-              <option>Kendaraan</option>
-              <option>Pendidikan</option>
+              <option value="Kesehatan">Kesehatan</option>
+              <option value="Properti">Properti</option>
+              <option value="Kendaraan">Kendaraan</option>
+              <option value="Pendidikan">Pendidikan</option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -186,9 +204,9 @@ export default function AdminTambahProduk() {
             <h3 className="text-sm font-bold text-gray-800 mb-3">Status Produk</h3>
             <div className="space-y-2">
               {[
-                { id: 'aktif', label: 'Aktif', sub: 'Dapat dilihat dan dibeli oleh nasabah', color: 'border-green-400 bg-green-50', dot: 'bg-green-500' },
+                { id: 'published', label: 'Aktif', sub: 'Dapat dilihat dan dibeli oleh nasabah', color: 'border-green-400 bg-green-50', dot: 'bg-green-500' },
                 { id: 'draft', label: 'Draft', sub: 'Belum dipublikasikan', color: 'border-yellow-400 bg-yellow-50', dot: 'bg-yellow-500' },
-                { id: 'nonaktif', label: 'Nonaktif', sub: 'Disembunyikan dari nasabah', color: 'border-red-300 bg-red-50', dot: 'bg-red-400' },
+                { id: 'archived', label: 'Nonaktif', sub: 'Disembunyikan dari nasabah', color: 'border-red-300 bg-red-50', dot: 'bg-red-400' },
               ].map((s) => (
                 <div key={s.id} onClick={() => setStatus(s.id)}
                   className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ${status === s.id ? s.color : 'border-gray-100 bg-gray-50'}`}>
@@ -213,7 +231,7 @@ export default function AdminTambahProduk() {
           </div>
           <div className="flex items-center gap-4 flex-wrap">
             <button onClick={() => handleSubmit('publish')} disabled={isLoading} className="flex items-center gap-2 bg-[#1B3A5C] hover:bg-sky-800 text-white font-semibold px-8 py-2.5 rounded-lg text-sm transition disabled:opacity-50">
-              Simpan & Publikasikan
+              {isLoading ? 'Menyimpan...' : 'Simpan & Publikasikan'}
             </button>
             <button onClick={() => handleSubmit('draft')} disabled={isLoading} className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-8 py-2.5 rounded-lg text-sm transition disabled:opacity-50">
               Simpan Draft
@@ -235,9 +253,9 @@ export default function AdminTambahProduk() {
               </div>
               <h3 className="text-lg font-bold text-gray-800">Data Tidak Valid</h3>
             </div>
-            <p className="text-gray-600 text-sm mb-3 text-center">
-              Terdapat data yang belum diisi atau tidak valid. Silahkan periksa kembali!
-            </p>
+            <div className="text-gray-600 text-sm mb-3 text-left space-y-1">
+              {errorMessages.map((msg, i) => <p key={i}>• {msg}</p>)}
+            </div>
           </div>
         </div>
       )}

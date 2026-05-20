@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaDownload } from 'react-icons/fa';
 import { FaHome, FaHeartbeat, FaCar, FaGraduationCap } from 'react-icons/fa';
+import { api } from '../lib/api'; // TAMBAHAN: Import fungsi api
 
 export default function StatusKlaim() {
   const [claims, setClaims] = useState([]);
@@ -33,29 +34,36 @@ export default function StatusKlaim() {
     const fetchKlaim = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/klaim', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (!response.ok) throw new Error('Gagal mengambil data klaim');
-        const data = await response.json();
-        // Pastikan data adalah array
-        const klaimArray = Array.isArray(data) ? data : (data.claims || []);
-        const validClaims = klaimArray.filter(claim => claim && claim.jenis);
+        
+        // PERUBAHAN: Gunakan fungsi api() dan arahkan ke '/klaim/saya' sesuai dengan rute Laravel
+        const { data } = await api('/klaim/saya', 'GET', null, token);
+        
+        // Pastikan data adalah array (handling struktur respons yang bervariasi)
+        const klaimArray = Array.isArray(data) ? data : (data?.claims || data?.data || []);
+        
+        const validClaims = klaimArray.filter(claim => claim); // Filter agar tidak ada object null
+        
         const withIcons = validClaims.map(claim => ({
           ...claim,
-          icon: getIconByJenis(claim.jenis)
+          // Menyesuaikan mapping field jika data dari backend berbeda nama key-nya
+          jenis: claim.jenis || claim.Jenis_Klaim || 'Klaim Umum',
+          noPolis: claim.noPolis || claim.ID_Polis || '-',
+          status: claim.status || claim.Status_Klaim || 'DIPROSES',
+          tglPengajuan: claim.tglPengajuan || claim.Tanggal_Pengajuan || '-',
+          jumlah: claim.jumlah || (claim.Jumlah_Klaim ? `Rp ${Number(claim.Jumlah_Klaim).toLocaleString('id-ID')}` : 'Rp 0'),
+          icon: getIconByJenis(claim.jenis || claim.Jenis_Klaim || '')
         }));
+        
         setClaims(withIcons);
       } catch (err) {
         console.error('Error fetching klaim:', err);
-        setError(err.message);
+        setError(err.message || 'Gagal mengambil data status klaim.');
         setClaims([]);
       } finally {
         setLoading(false);
       }
     };
+    
     fetchKlaim();
   }, []);
 
@@ -88,9 +96,9 @@ export default function StatusKlaim() {
             <p className="text-gray-500">Belum ada klaim yang diajukan.</p>
           </div>
         ) : (
-          claims.map((claim) => (
+          claims.map((claim, index) => (
             <div
-              key={claim.id}
+              key={claim.id || claim.ID_Klaim || index}
               className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden"
             >
               <div className="p-5 space-y-4">
@@ -106,7 +114,7 @@ export default function StatusKlaim() {
                     className={`text-lg font-bold ${
                       claim.status === 'DISETUJUI'
                         ? 'text-green-700'
-                        : claim.status === 'DIPROSES'
+                        : claim.status === 'DIPROSES' || claim.status === 'PENDING'
                         ? 'text-yellow-600'
                         : 'text-red-600'
                     }`}
@@ -132,7 +140,7 @@ export default function StatusKlaim() {
                     <p className="text-red-600 text-lg font-bold">-</p>
                   ) : (
                     <p className="font-medium text-blue-500">
-                      {claim.tglPencairan === '-'
+                      {claim.tglPencairan === '-' || !claim.tglPencairan
                         ? '-'
                         : claim.tglPencairan === 'Menunggu Verifikasi'
                         ? <span className="italic">{claim.tglPencairan}</span>
@@ -144,7 +152,7 @@ export default function StatusKlaim() {
                 <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CATATAN ADMIN</p>
                   <p className="text-sm text-gray-700 mt-1">
-                    {getCatatanAdmin(claim.status)}
+                    {claim.catatanAdmin || getCatatanAdmin(claim.status)}
                   </p>
                 </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { api } from '../lib/api'; // TAMBAHAN: Import fungsi api
 
 export default function AdminPengguna() {
   const navigate = useNavigate();
@@ -14,21 +15,46 @@ export default function AdminPengguna() {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
-        // Ambil daftar verifikasi pending
-        const verifRes = await fetch('/api/admin/verifikasi-pending', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!verifRes.ok) throw new Error('Gagal mengambil data verifikasi');
-        const verifData = await verifRes.json();
-        setVerifikasiData(verifData);
+        
+        // 1. Ambil daftar verifikasi pending (jika rute ini ada)
+        try {
+          const verifRes = await api('/admin/verifikasi/pending', 'GET', null, token);
+          const verifData = Array.isArray(verifRes.data) ? verifRes.data : (verifRes.data?.data || []);
+          
+          // Map data verifikasi agar sesuai dengan kebutuhan tampilan
+          const mappedVerif = verifData.map(item => ({
+             id: item.id || item.ID_Pengguna,
+             nama: item.nama || item.Nama_Lengkap || 'User',
+             pending: item.pending || 'Dokumen belum direview',
+             _original: item
+          }));
+          setVerifikasiData(mappedVerif);
+        } catch (verifErr) {
+          console.warn('Endpoint verifikasi pending mungkin belum ada', verifErr);
+          setVerifikasiData([]);
+        }
 
-        // Ambil daftar pengguna
-        const userRes = await fetch('/api/admin/pengguna', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!userRes.ok) throw new Error('Gagal mengambil data pengguna');
-        const userData = await userRes.json();
-        setPenggunaData(userData);
+        // 2. Ambil daftar pengguna (menggunakan rute resource /pengguna)
+        try {
+          const userRes = await api('/pengguna', 'GET', null, token);
+          const userData = Array.isArray(userRes.data) ? userRes.data : (userRes.data?.data || []);
+          
+          // Map data pengguna agar sesuai dengan kolom tabel
+          const mappedUsers = userData.map(user => ({
+              id: user.id || user.ID_Pengguna,
+              nama: user.nama || user.Nama_Lengkap || 'Nama Tidak Diketahui',
+              email: user.email || user.Email || '-',
+              polis: user.polis || user.jumlah_polis || 0, // Fallback angka
+              klaim: user.klaim || user.jumlah_klaim || 0, // Fallback angka
+              ktp: user.ktp || user.ktp_status === 'verified' || user.Verifikasi_Status === 'verified', // Cek status verifikasi KTP
+              kk: user.kk || user.kk_status === 'verified' || user.Verifikasi_Status === 'verified' // Cek status verifikasi KK
+          }));
+          
+          setPenggunaData(mappedUsers);
+        } catch (userErr) {
+           throw new Error(userErr.message || 'Gagal mengambil data pengguna dari server');
+        }
+
       } catch (err) {
         console.error('Error fetching admin pengguna:', err);
         setError(err.message);
@@ -40,8 +66,8 @@ export default function AdminPengguna() {
   }, []);
 
   const filteredPengguna = penggunaData.filter(user =>
-    user.nama.toLowerCase().includes(search.toLowerCase()) ||
-    user.email.toLowerCase().includes(search.toLowerCase())
+    (user.nama && user.nama.toLowerCase().includes(search.toLowerCase())) ||
+    (user.email && user.email.toLowerCase().includes(search.toLowerCase()))
   );
 
   if (loading) return <div className="p-6 text-center">Memuat data pengguna...</div>;
@@ -112,16 +138,16 @@ export default function AdminPengguna() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredPengguna.map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50 transition">
+                <tr key={item.id || idx} className="hover:bg-gray-50 transition">
                   <td className="px-5 py-3.5 text-sky-700 font-semibold">{item.nama}</td>
                   <td className="px-5 py-3.5 text-gray-600">{item.email}</td>
                   <td className="px-5 py-3.5 text-gray-800 font-medium">{item.polis}</td>
                   <td className="px-5 py-3.5 text-gray-800 font-medium">{item.klaim}</td>
                   <td className="px-5 py-3.5">
-                    {item.ktp ? <FaCheckCircle className="text-green-500 text-lg" /> : <FaExclamationTriangle className="text-orange-400 text-lg" />}
+                    {item.ktp ? <FaCheckCircle className="text-green-500 text-lg" title="Terverifikasi" /> : <FaExclamationTriangle className="text-orange-400 text-lg" title="Belum Terverifikasi" />}
                   </td>
                   <td className="px-5 py-3.5">
-                    {item.kk ? <FaCheckCircle className="text-green-500 text-lg" /> : <FaExclamationTriangle className="text-orange-400 text-lg" />}
+                    {item.kk ? <FaCheckCircle className="text-green-500 text-lg" title="Terverifikasi" /> : <FaExclamationTriangle className="text-orange-400 text-lg" title="Belum Terverifikasi" />}
                   </td>
                 </tr>
               ))}

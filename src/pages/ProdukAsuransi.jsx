@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaHeartbeat, FaHome, FaCar, FaGraduationCap } from 'react-icons/fa';
+import { api } from '../lib/api'; 
 
 export default function ProdukAsuransi() {
   const navigate = useNavigate();
@@ -33,40 +34,60 @@ export default function ProdukAsuransi() {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
-        // Ambil daftar produk
-        const produkRes = await fetch('/api/produk', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!produkRes.ok) throw new Error('Gagal mengambil data produk');
-        const produkData = await produkRes.json();
+        const response = await api('/produk', 'GET', null, token);
         
-        // Kelompokkan berdasarkan kategori (asumsikan setiap produk punya field 'kategori')
+        // Mengamankan pembacaan data array dari Axios / Fetch Helper
+        const produkData = Array.isArray(response) ? response : (response.data || []);
+        
+        // Kelompokkan berdasarkan kategori
         const grouped = {};
-        produkData.forEach(prod => {
-          const kat = prod.kategori; // 'Kesehatan', 'Properti', dst
-          if (!grouped[kat]) grouped[kat] = [];
-          grouped[kat].push(prod);
-        });
+        if (Array.isArray(produkData)) {
+            produkData.forEach(prod => {
+              // PERBAIKAN UTAMA: Pastikan membaca 'Kategori_Produk' dari Laravel jika 'kategori' kosong
+              const katRaw = prod.kategori || prod.Kategori_Produk || 'Kesehatan';
+              
+              // Normalisasi ejaan huruf agar pas dengan state activeCategory (Kesehatan, Properti, dst)
+              let kat = 'Kesehatan';
+              if (katRaw.toLowerCase() === 'properti') kat = 'Properti';
+              if (katRaw.toLowerCase() === 'kendaraan') kat = 'Kendaraan';
+              if (katRaw.toLowerCase() === 'pendidikan' || katRaw.toLowerCase() === 'jiwa') kat = 'Pendidikan';
+
+              // Amankan data harga premi dan status aktif
+              const statusRaw = (prod.status || prod.Status_Produk || 'aktif').toLowerCase();
+              
+              // Hanya masukkan produk yang berstatus aktif/published ke halaman user
+              if (statusRaw === 'aktif' || statusRaw === 'published') {
+                if (!grouped[kat]) grouped[kat] = [];
+                grouped[kat].push({
+                  id: prod.id || prod.ID_Produk,
+                  name: prod.name || prod.nama || prod.Nama_Produk || 'Produk Asuransi',
+                  price: parseInt(prod.price || prod.premi || prod.Harga_Premi || 0),
+                  description: prod.description || prod.deskripsi || prod.Deskripsi_Produk || 'Melindungi masa depan Anda',
+                  badge: prod.badge || null
+                });
+              }
+            });
+        }
         setProducts(grouped);
 
-        // Ambil opsi nilai pertanggungan (bisa dari endpoint terpisah)
-        const optionsRes = await fetch('/api/pertanggungan-options', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (optionsRes.ok) {
-          const optionsData = await optionsRes.json();
-          setPertanggunganOptions(optionsData);
-        } else {
-          // Fallback kosong
-          setPertanggunganOptions({});
+        // Ambil opsi pertanggungan
+        try {
+            const optionsRes = await api('/pertanggungan-options', 'GET', null, token);
+            const optionsData = optionsRes.data || optionsRes || {};
+            setPertanggunganOptions(optionsData);
+        } catch (optionsErr) {
+            console.warn('Gagal mengambil pertanggungan options, menggunakan fallback.');
+            setPertanggunganOptions({});
         }
+
       } catch (err) {
         console.error('Error fetching products:', err);
-        setError(err.message);
+        setError(err.message || 'Gagal mengambil data produk dari server');
       } finally {
         setLoading(false);
       }
     };
+    
     fetchData();
   }, []);
 
@@ -86,10 +107,10 @@ export default function ProdukAsuransi() {
 
   const hitungPremi = () => {
     if (!selectedProduct) return 0;
-    const basePremi = selectedProduct.price;
+    const basePremi = selectedProduct.price || 0; 
     const selectedValue = formData.nilaiPertanggungan;
     if (!selectedValue) return basePremi;
-    // Asumsikan rumus sama
+    
     const extra = (parseFloat(selectedValue) / 100000000) * 50000;
     return Math.round(basePremi + extra);
   };
@@ -102,7 +123,6 @@ export default function ProdukAsuransi() {
       return;
     }
     
-    // Simpan polis ke localStorage (atau bisa juga kirim ke API)
     const kategoriMap = {
       Kesehatan: 'Asuransi Kesehatan',
       Properti: 'Asuransi Properti',
@@ -166,31 +186,40 @@ export default function ProdukAsuransi() {
           <h2 className="text-lg font-semibold text-gray-800">Daftar Produk - {activeCategory}</h2>
           <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">{currentProducts.length} produk</span>
         </div>
-        {currentProducts.map((product) => (
-          <div key={product.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-            {product.badge && <div className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 inline-block rounded-br-lg">{product.badge}</div>}
-            <div className="p-5">
-              <div className="flex justify-between items-start flex-wrap gap-2">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800">{product.name}</h3>
-                  <div className="mt-1">
-                    <span className="text-2xl font-extrabold text-sky-950">{product.priceFormatted}</span>
-                    <span className="text-gray-500 text-sm">{product.period}</span>
+        
+        {currentProducts.length === 0 ? (
+           <p className="text-center text-gray-500 py-8">Belum ada produk di kategori ini.</p>
+        ) : (
+          currentProducts.map((product) => (
+            <div key={product.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+              {product.badge && <div className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 inline-block rounded-br-lg">{product.badge}</div>}
+              <div className="p-5">
+                <div className="flex justify-between items-start flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800">{product.name}</h3>
+                    <div className="mt-1">
+                      <span className="text-2xl font-extrabold text-sky-950">
+                        Rp {(product.price || 0).toLocaleString('id-ID')}
+                      </span>
+                      <span className="text-gray-500 text-sm"> / bulan</span>
+                    </div>
                   </div>
+                  <button onClick={() => handlePilihClick(product)} className="bg-sky-100 hover:bg-gray-300 text-sky-950 font-semibold px-5 py-2 rounded-lg transition flex items-center gap-1">
+                    Pilih
+                  </button>
                 </div>
-                <button onClick={() => handlePilihClick(product)} className="bg-sky-100 hover:bg-gray-400 text-sky-950 font-semibold px-5 py-2 rounded-lg transition flex items-center gap-1">
-                  Pilih
-                </button>
-              </div>
-              <div className="mt-4 space-y-1">
-                {product.benefits?.map((benefit, idx) => <p key={idx} className="text-gray-600 text-sm flex items-center gap-2"><span className="text-green-500">✓</span> {benefit}</p>)}
+                <div className="mt-4 space-y-1">
+                  <p className="text-gray-600 text-sm flex items-center gap-2">
+                    <span className="text-green-500">✓</span> {product.description}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
-      {/* Modal beli polis (tetap sama, gunakan selectedProduct dan pertanggunganOptions dari API) */}
+      {/* Modal beli polis */}
       {showModal && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -199,7 +228,14 @@ export default function ProdukAsuransi() {
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Jenis Polis</label><input type="text" value={selectedProduct.name} disabled className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-600" /></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Nilai Pertanggungan (Rp)</label><select name="nilaiPertanggungan" value={formData.nilaiPertanggungan} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2">
                 <option value="">Pilih nilai pertanggungan</option>
-                {pertanggunganOptions[selectedProduct.name]?.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                {pertanggunganOptions[selectedProduct.name] 
+                    ? pertanggunganOptions[selectedProduct.name].map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)
+                    : <>
+                        <option value="50000000">Rp 50.000.000</option>
+                        <option value="100000000">Rp 100.000.000</option>
+                        <option value="250000000">Rp 250.000.000</option>
+                      </>
+                }
               </select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama Penerima</label><input type="text" name="namaPenerima" value={formData.namaPenerima} onChange={handleFormChange} placeholder="Nama lengkap sesuai KTP" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">NIK Penerima</label><input type="text" name="nikPenerima" value={formData.nikPenerima} onChange={handleFormChange} placeholder="16 digit NIK" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaShoppingCart, FaHistory, FaClipboardList, FaFileInvoice, FaWallet, FaUser, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import { Shield } from 'lucide-react';
-import { api } from '../lib/api'; // 1. IMPORT API HELPER DI SINI
+import { api } from '../lib/api'; 
 
 export default function DashboardNasabah() {
   const [user, setUser] = useState({ name: 'Nasabah' });
@@ -17,12 +17,13 @@ export default function DashboardNasabah() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Ambil data user dari localStorage (disimpan saat login)
+    // Ambil data user dari localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
-        setUser({ name: userData.name || 'Nasabah' });
+        // Memastikan nama terambil entah itu dari userData.nama atau userData.name
+        setUser({ name: userData.nama || userData.name || 'Nasabah' });
       } catch (e) {
         console.error('Parse user error', e);
       }
@@ -30,12 +31,9 @@ export default function DashboardNasabah() {
 
     const fetchDashboardData = async () => {
       try {
-        // 2. AMBIL TOKEN
         const token = localStorage.getItem('token');
         
-        // 3. GUNAKAN FUNGSI API (Bukan fetch biasa)
-        // Note: Pastikan path endpoint di bawah ini sesuai dengan backend kamu. 
-        // Jika backendmu butuh prefix '/api', ubah menjadi '/api/nasabah/dashboard'
+        // Memanggil API asli di backend Laravel menggunakan api helper
         const { data } = await api('/nasabah/dashboard', 'GET', null, token);
         
         setStats({
@@ -155,23 +153,27 @@ export default function DashboardNasabah() {
           </Link>
         </div>
         <div className="space-y-3">
-          {aktivitas.map((item) => (
-            <div key={item.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-              <div className="text-xl">{getIconByType(item.type)}</div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-gray-800">{item.title}</p>
-                    <p className="text-xs text-gray-500">{item.product}</p>
-                    <p className="text-xs text-gray-400 mt-1">{item.date}</p>
+          {aktivitas.length === 0 ? (
+            <p className="text-sm text-gray-500 py-2">Belum ada aktivitas terbaru.</p>
+          ) : (
+            aktivitas.map((item, index) => (
+              <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="text-xl">{getIconByType(item.type)}</div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-gray-800">{item.title}</p>
+                      <p className="text-xs text-gray-500">{item.product}</p>
+                      <p className="text-xs text-gray-400 mt-1">{item.date}</p>
+                    </div>
+                    {item.amount && (
+                      <p className="text-sm font-bold text-sky-900">{item.amount}</p>
+                    )}
                   </div>
-                  {item.amount && (
-                    <p className="text-sm font-bold text-sky-900">{item.amount}</p>
-                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { FaUserCircle, FaIdCard, FaFileAlt, FaKey, FaSignOutAlt, FaHome, FaFileInvoice, FaShoppingCart, FaClipboardList, FaUser, FaLock } from 'react-icons/fa';
+import { api } from '../lib/api'; // TAMBAHAN: Import fungsi api
 
 export default function Profil() {
   const navigate = useNavigate();
@@ -25,17 +26,29 @@ export default function Profil() {
     const fetchProfil = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/nasabah/profil', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (!response.ok) throw new Error('Gagal mengambil data profil');
-        const data = await response.json();
-        setProfilData(data);
+        
+        // PERUBAHAN: Gunakan fungsi api() dan arahkan ke endpoint yang benar sesuai routes/api.php
+        const response = await api('/user', 'GET', null, token);
+        
+        // Mengamankan data jika respons backend dibungkus dalam objek 'user'
+        const userData = response.data?.user || response.data;
+        
+        // Memetakan key dari backend ke format yang dipakai frontend
+        const mappedData = {
+            fullName: userData?.nama || userData?.Nama_Lengkap || userData?.name || 'Nasabah',
+            email: userData?.email || userData?.Email || '-',
+            phone: userData?.noTelepon || userData?.No_Telepon || 'Belum diatur',
+            isVerified: userData?.verifikasi_status === 'verified' || userData?.Verifikasi_Status === 'verified',
+            ktpStatus: userData?.ktp_status || 'Dalam Pengecekan',
+            kkStatus: userData?.kk_status || 'Dalam Pengecekan',
+            ktpUploadDate: userData?.ktp_upload_date || 'Belum diunggah',
+            kkUploadDate: userData?.kk_upload_date || 'Belum diunggah',
+        };
+        
+        setProfilData(mappedData);
       } catch (err) {
         console.error('Error fetching profil:', err);
-        setError(err.message);
+        setError(err.message || 'Gagal memuat profil');
       } finally {
         setLoading(false);
       }
@@ -43,10 +56,21 @@ export default function Profil() {
     fetchProfil();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+        const token = localStorage.getItem('token');
+        if (token) {
+            // Opsional: Beritahu backend bahwa kita logout (biar token dihapus di server)
+            await api('/logout', 'POST', null, token);
+        }
+    } catch (e) {
+        console.error('Logout error (server)', e);
+    } finally {
+        // Hapus token di sisi frontend terlepas dari respon server
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+    }
   };
 
   if (loading) {
@@ -70,7 +94,7 @@ export default function Profil() {
           <div>
             <h1 className="text-xl font-bold">{profilData.fullName}</h1>
             <p className="text-sm text-blue-100 flex items-center gap-1">
-              <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+              <span className={`inline-block w-2 h-2 rounded-full ${profilData.isVerified ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
               {profilData.isVerified ? 'Akun Terverifikasi' : 'Belum Terverifikasi'}
             </p>
           </div>
@@ -111,16 +135,16 @@ export default function Profil() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-700">KTP</p>
-                <p className="text-xs text-gray-400">Diunggah {profilData.ktpUploadDate}</p>
+                <p className="text-xs text-gray-400">Diunggah: {profilData.ktpUploadDate}</p>
               </div>
-              <button className="text-sky-800 text-sm font-medium">{profilData.ktpStatus || 'Terverifikasi'}</button>
+              <button className="text-sky-800 text-sm font-medium">{profilData.ktpStatus}</button>
             </div>
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-700">Kartu Keluarga</p>
-                <p className="text-xs text-gray-400">Diunggah {profilData.kkUploadDate}</p>
+                <p className="text-xs text-gray-400">Diunggah: {profilData.kkUploadDate}</p>
               </div>
-              <button className="text-sky-800 text-sm font-medium">{profilData.kkStatus || 'Terverifikasi'}</button>
+              <button className="text-sky-800 text-sm font-medium">{profilData.kkStatus}</button>
             </div>
           </div>
         </div>

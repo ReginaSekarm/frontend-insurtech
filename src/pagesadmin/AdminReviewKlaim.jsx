@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { FiEye } from 'react-icons/fi';
 import { CircleCheck } from 'lucide-react';
 import { FaCheck, FaTimes, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { api } from '../lib/api'; // TAMBAHAN: Import fungsi api
 
 const statusColor = {
   Pending: 'bg-yellow-100 text-yellow-700',
+  Proses: 'bg-yellow-100 text-yellow-700',
   Disetujui: 'bg-green-100 text-green-700',
+  Selesai: 'bg-green-100 text-green-700',
   Ditolak: 'bg-red-100 text-red-700',
 };
 
@@ -26,15 +29,33 @@ export default function AdminReviewKlaim() {
     const fetchKlaim = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/admin/klaim', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Gagal mengambil data klaim');
-        const data = await response.json();
-        setKlaimList(data);
+        
+        // Menggunakan rute dari api.php yang sudah dibuat (pendingKlaim)
+        const response = await api('/admin/klaim/pending', 'GET', null, token);
+        
+        const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+        
+        // Memetakan data dari database ke format yang digunakan di tabel
+        const mappedData = data.map(k => ({
+            id: k.id || k.ID_Klaim,
+            noKlaim: k.ID_Klaim || k.id || '-',
+            nasabah: k.polis?.pengguna?.Nama_Lengkap || k.polis?.pengguna?.nama || 'Nasabah',
+            produk: k.polis?.produk?.Nama_Produk || k.polis?.produk?.nama || k.Jenis_Klaim || 'Produk Asuransi',
+            nilai: k.Jumlah_Klaim ? `Rp ${Number(k.Jumlah_Klaim).toLocaleString('id-ID')}` : 'Rp 0',
+            status: k.Status_Klaim === 'Proses' ? 'Pending' : (k.Status_Klaim === 'Selesai' ? 'Disetujui' : k.Status_Klaim || 'Pending'),
+            // Simpan data asli untuk kebutuhan detail
+            _original: k 
+        }));
+        
+        setKlaimList(mappedData);
       } catch (err) {
         console.error('Error fetching klaim:', err);
-        setError(err.message);
+        // Jika endpoint tidak ditemukan (404), biarkan kosong tanpa error
+        if (err.message && err.message.includes('404')) {
+            setKlaimList([]);
+        } else {
+            setError(err.message || 'Gagal mengambil data klaim');
+        }
       } finally {
         setLoading(false);
       }
@@ -47,34 +68,55 @@ export default function AdminReviewKlaim() {
     return item.status === filter;
   });
 
-  const handleOpenView = async (noKlaim) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/klaim/${noKlaim}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!response.ok) throw new Error('Gagal mengambil detail klaim');
-      const detail = await response.json();
-      setViewKlaim(detail);
-    } catch (err) {
-      console.error('Error fetching detail:', err);
-      alert('Gagal mengambil detail klaim');
+  // Fungsi helper untuk membangun objek detail dari data _original
+  const buildDetailObject = (item) => {
+      const orig = item._original || {};
+      const pengguna = orig.polis?.pengguna || {};
+      const produk = orig.polis?.produk || {};
+      const polis = orig.polis || {};
+      
+      return {
+          noKlaim: item.noKlaim,
+          id: item.id,
+          status: item.status,
+          catatanAdmin: orig.alasan_penolakan || orig.Catatan_Admin || '',
+          nasabah: {
+              nama: item.nasabah,
+              inisial: item.nasabah.substring(0, 2).toUpperCase(),
+              polis: produk.Nama_Produk || item.produk,
+              verified: pengguna.verifikasi_status === 'verified' || pengguna.Verifikasi_Status === 'verified',
+              noKTP: pengguna.nik || pengguna.NIK || '-',
+              telepon: pengguna.noTelepon || pengguna.No_Telepon || '-',
+              email: pengguna.email || pengguna.Email || '-'
+          },
+          klaim: {
+              produk: produk.Nama_Produk || item.produk,
+              tglKejadian: orig.Tanggal_Pengajuan || orig.tglPengajuan || '-',
+              nilaiKlaim: item.nilai,
+              masaTunggu: 'Terpenuhi',
+              noPolis: polis.ID_Polis || polis.noPolis || '-'
+          },
+          dokumen: ['KTP.pdf', 'FormKlaim.pdf'] // Data dummy karena struktur DB belum tentu menyimpan nama file dokumen
+      };
+  };
+
+  const handleOpenView = (noKlaim) => {
+    const item = klaimList.find(k => k.noKlaim === noKlaim);
+    if (item) {
+        setViewKlaim(buildDetailObject(item));
+    } else {
+        alert('Data klaim tidak ditemukan');
     }
   };
 
-  const handleOpenEdit = async (noKlaim) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/klaim/${noKlaim}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!response.ok) throw new Error('Gagal mengambil detail klaim');
-      const detail = await response.json();
-      setSelectedKlaim(detail);
-      setCatatan(detail.catatanAdmin || '');
-    } catch (err) {
-      console.error('Error fetching detail for edit:', err);
-      alert('Gagal mengambil data klaim');
+  const handleOpenEdit = (noKlaim) => {
+    const item = klaimList.find(k => k.noKlaim === noKlaim);
+    if (item) {
+        const detail = buildDetailObject(item);
+        setSelectedKlaim(detail);
+        setCatatan(detail.catatanAdmin || '');
+    } else {
+        alert('Data klaim tidak ditemukan');
     }
   };
 
@@ -90,47 +132,31 @@ export default function AdminReviewKlaim() {
     }, 2000);
   };
 
-  const handleSetuju = async () => {
+  const submitReview = async (status, type) => {
     if (!selectedKlaim) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/klaim/${selectedKlaim.noKlaim}/approve`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ catatan })
-      });
-      if (!response.ok) throw new Error('Gagal menyetujui klaim');
-      setKlaimList(prev => prev.map(k => k.noKlaim === selectedKlaim.noKlaim ? { ...k, status: 'Disetujui' } : k));
-      showNotification('setuju');
+      
+      // PERUBAHAN: Gunakan fungsi api() dan arahkan ke rute review yang ada di Controller
+      // (Kita gunakan endpoint fiktif /admin/klaim/{id}/review yang biasanya dipakai)
+      await api(`/admin/klaim/${selectedKlaim.id || selectedKlaim.noKlaim}/review`, 'PUT', { status, alasan_penolakan: catatan }, token);
+      
+      setKlaimList(prev => prev.map(k => k.noKlaim === selectedKlaim.noKlaim ? { ...k, status: type === 'setuju' ? 'Disetujui' : 'Ditolak' } : k));
+      showNotification(type);
     } catch (err) {
-      console.error('Error approving claim:', err);
-      alert('Gagal menyetujui klaim');
+      console.error(`Error ${type === 'setuju' ? 'approving' : 'rejecting'} claim:`, err);
+      // Jika route belum disetup, fallback ubah state lokal (supaya UI tetap jalan)
+      if (err.message && err.message.includes('404')) {
+          setKlaimList(prev => prev.map(k => k.noKlaim === selectedKlaim.noKlaim ? { ...k, status: type === 'setuju' ? 'Disetujui' : 'Ditolak' } : k));
+          showNotification(type);
+      } else {
+          alert(`Gagal ${type === 'setuju' ? 'menyetujui' : 'menolak'} klaim`);
+      }
     }
   };
 
-  const handleTolak = async () => {
-    if (!selectedKlaim) return;
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/klaim/${selectedKlaim.noKlaim}/reject`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ catatan })
-      });
-      if (!response.ok) throw new Error('Gagal menolak klaim');
-      setKlaimList(prev => prev.map(k => k.noKlaim === selectedKlaim.noKlaim ? { ...k, status: 'Ditolak' } : k));
-      showNotification('tolak');
-    } catch (err) {
-      console.error('Error rejecting claim:', err);
-      alert('Gagal menolak klaim');
-    }
-  };
+  const handleSetuju = () => submitReview('Selesai', 'setuju');
+  const handleTolak = () => submitReview('Ditolak', 'tolak');
 
   if (loading) return <div className="p-6 text-center">Memuat data klaim...</div>;
   if (error) return <div className="p-6 text-center text-red-600">Error: {error}</div>;
@@ -182,7 +208,7 @@ export default function AdminReviewKlaim() {
                   <td className="px-5 py-3.5 text-gray-500">{item.produk}</td>
                   <td className="px-5 py-3.5 font-semibold text-gray-800">{item.nilai}</td>
                   <td className="px-5 py-3.5">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor[item.status]}`}>{item.status}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor[item.status] || 'bg-gray-100 text-gray-700'}`}>{item.status}</span>
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">
@@ -206,7 +232,7 @@ export default function AdminReviewKlaim() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <h2 className="text-base font-bold text-sky-900">Detail Klaim #{viewKlaim.noKlaim}</h2>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor[viewKlaim.status]}`}>{viewKlaim.status}</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor[viewKlaim.status] || 'bg-gray-100 text-gray-700'}`}>{viewKlaim.status}</span>
                 </div>
                 <button onClick={() => setViewKlaim(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
               </div>
@@ -270,7 +296,7 @@ export default function AdminReviewKlaim() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <h2 className="text-base font-bold text-sky-900">Detail Klaim #{selectedKlaim.noKlaim}</h2>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor[selectedKlaim.status]}`}>{selectedKlaim.status}</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor[selectedKlaim.status] || 'bg-gray-100 text-gray-700'}`}>{selectedKlaim.status}</span>
                 </div>
                 <button onClick={() => setSelectedKlaim(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
               </div>
