@@ -23,7 +23,8 @@ export default function DashboardNasabah() {
       try {
         const userData = JSON.parse(storedUser);
         // Memastikan nama terambil entah itu dari userData.nama atau userData.name
-        setUser({ name: userData.nama || userData.name || 'Nasabah' });
+        const userName = userData.nama_lengkap || userData.nama || userData.name || 'Nasabah';
+        setUser({ name: userName });
       } catch (e) {
         console.error('Parse user error', e);
       }

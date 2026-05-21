@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaHome } from 'react-icons/fa';
+import { FaHome, FaArrowLeft } from 'react-icons/fa';
 
 export default function BayarPremi() {
   const location = useLocation();
@@ -39,7 +39,7 @@ export default function BayarPremi() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/transaksi/premi', {
+      const response = await fetch('http://127.0.0.1:8000/api/transaksi/premi', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,11 +75,16 @@ export default function BayarPremi() {
     }
   };
 
+  const handleBackToPolisSaya = () => {
+    navigate('/polis-saya');
+  };
+
   return (
     <div className="min-h-screen bg-amber-50 py-8 px-4">
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div className="p-4 border-b flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
+          <button onClick={handleBackToPolisSaya} className="text-gray-600 hover:text-gray-900 transition p-1">
+            <FaArrowLeft size={18} />
           </button>
           <h1 className="text-xl font-bold text-gray-800">Bayar Premi</h1>
         </div>

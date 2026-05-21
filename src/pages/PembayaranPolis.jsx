@@ -13,6 +13,7 @@ export default function PembayaranPolis() {
   const [error, setError] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState('pending'); // pending, success, failed
   const [countdown, setCountdown] = useState(0); // hitung mundur untuk polling (opsional)
+  const [showPopup, setShowPopup] = useState(false); // STATE UNTUK POPUP QR CODE TERSIMPAN
 
   const pollingRef = useRef(null);
   const countdownRef = useRef(null);
@@ -53,13 +54,13 @@ export default function PembayaranPolis() {
     }
   };
 
-  // Mulai polling dan hitung mundur (opsional, misal timeout 5 menit)
+  // Mulai polling dan hitung mundur (opsional, misal timeout 20 menit)
   const startPolling = (id) => {
     // Hentikan yang lama jika ada
     stopPolling();
 
-    // Set timeout 5 menit (300 detik)
-    let timeLeft = 300;
+    // Set timeout 20 menit (1200 detik)
+    let timeLeft = 1200;
     setCountdown(timeLeft);
 
     countdownRef.current = setInterval(() => {
@@ -157,10 +158,18 @@ export default function PembayaranPolis() {
     };
   }, [transactionId, location.state, navigate]);
 
-  // Handler simpan QR (simulasi)
+  // Handler simpan QR (dengan popup)
   const handleSimpanQR = () => {
-    // Di sini bisa diimplementasikan download QR sebagai gambar
-    alert('Kode QR berhasil disimpan (simulasi).');
+    // TAMPILKAN POPUP
+    setShowPopup(true);
+    
+    // HIDE POPUP SETELAH 2 DETIK
+    setTimeout(() => {
+      setShowPopup(false);
+    }, 2000);
+    
+    // Di sini bisa ditambahkan logika download QR jika diperlukan
+    // alert('Kode QR berhasil disimpan (simulasi).');
   };
 
   const handleKembali = () => {
@@ -217,8 +226,7 @@ export default function PembayaranPolis() {
               Rp {Number(total || 0).toLocaleString('id-ID')}
             </p>
             <p className="text-sm font-semibold text-gray-700 mt-2">{productName || 'Produk Asuransi'}</p>
-            {namaPenerima && <p className="text-xs text-gray-500 mt-1">Penerima: {namaPenerima} ({nikPenerima || '-'})</p>}
-          </div>
+            </div>
 
           {/* Status pembayaran */}
           <div className="text-center">
@@ -288,6 +296,20 @@ export default function PembayaranPolis() {
           </div>
         </div>
       </div>
+
+      {/* POPUP NOTIFIKASI QR CODE TERSIMPAN */}
+      {showPopup && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-bounce pointer-events-auto">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="font-medium">QR Code berhasil tersimpan!</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
