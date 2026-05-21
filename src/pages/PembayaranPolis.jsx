@@ -1,22 +1,101 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { FaDownload, FaArrowLeft } from 'react-icons/fa6'; // PERBAIKAN: Gunakan icon yang sejenis
+import { FaDownload, FaArrowLeft } from 'react-icons/fa6';
 
 export default function PembayaranPolis() {
   const location = useLocation();
   const navigate = useNavigate();
   const { transactionId: urlTransactionId } = useParams();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState('pending'); // pending, success, failed
+  const [countdown, setCountdown] = useState(0); // hitung mundur untuk polling (opsional)
+
+  const pollingRef = useRef(null);
+  const countdownRef = useRef(null);
 
   // Ambil transactionId dari state atau URL
   const transactionId = location.state?.transactionId || urlTransactionId;
 
+  // Fungsi untuk mengecek status pembayaran ke backend
+  const checkPaymentStatus = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://127.0.0.1:8000/api/pembayaran-polis/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Gagal mengecek status');
+      const result = await response.json();
+      // Asumsikan response memiliki field status: 'pending', 'paid', 'success', 'failed', 'expired'
+      const status = result.data?.status || result.status || 'pending';
+      return status;
+    } catch (err) {
+      console.error('Polling error:', err);
+      return null;
+    }
+  };
+
+  // Hentikan semua interval
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+  };
+
+  // Mulai polling dan hitung mundur (opsional, misal timeout 5 menit)
+  const startPolling = (id) => {
+    // Hentikan yang lama jika ada
+    stopPolling();
+
+    // Set timeout 5 menit (300 detik)
+    let timeLeft = 300;
+    setCountdown(timeLeft);
+
+    countdownRef.current = setInterval(() => {
+      timeLeft -= 1;
+      setCountdown(timeLeft);
+      if (timeLeft <= 0) {
+        // Waktu habis, hentikan polling dan tampilkan pesan expired
+        stopPolling();
+        setPaymentStatus('expired');
+        setError('Waktu pembayaran habis. Silakan lakukan pemesanan ulang.');
+      }
+    }, 1000);
+
+    // Polling setiap 5 detik
+    pollingRef.current = setInterval(async () => {
+      const status = await checkPaymentStatus(id);
+      if (status === 'paid' || status === 'success') {
+        setPaymentStatus('success');
+        stopPolling();
+        // Navigasi ke halaman Polis Saya setelah sukses
+        navigate('/polis-saya', {
+          replace: true,
+          state: { paymentSuccess: true, transactionId: id }
+        });
+      } else if (status === 'failed' || status === 'expired') {
+        setPaymentStatus('failed');
+        stopPolling();
+        setError('Pembayaran gagal atau kadaluwarsa. Silakan hubungi customer service.');
+      }
+    }, 5000);
+  };
+
+  // Fetch data awal
   useEffect(() => {
     const fetchPembayaran = async () => {
-      // JALAN PINTAS AMAN: Jika data sudah dikirim lengkap lewat Router state, langsung pakai!
+      // Jika data sudah ada di location.state, langsung pakai
       if (location.state && location.state.transactionId) {
         setData({
           total: location.state.total,
@@ -26,6 +105,8 @@ export default function PembayaranPolis() {
           nikPenerima: location.state.nikPenerima
         });
         setLoading(false);
+        // Mulai polling dengan transactionId yang sudah ada
+        startPolling(location.state.transactionId);
         return;
       }
 
@@ -35,20 +116,31 @@ export default function PembayaranPolis() {
         return;
       }
 
-      // Skenario cadangan jika halaman di-refresh manual (F5) oleh user
       try {
         const token = localStorage.getItem('token');
-        // Gunakan base url penuh agar tidak salah tangkap HTML jika route Vite bermasalah
         const response = await fetch(`http://127.0.0.1:8000/api/pembayaran-polis/${transactionId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json'
           }
         });
-        
         if (!response.ok) throw new Error('Gagal mengambil data pembayaran');
         const result = await response.json();
-        setData(result.data || result);
+        const paymentData = result.data || result;
+        setData(paymentData);
+        const initialStatus = paymentData.status || 'pending';
+        setPaymentStatus(initialStatus);
+
+        // Jika status sudah success sejak awal, langsung redirect
+        if (initialStatus === 'paid' || initialStatus === 'success') {
+          navigate('/polis-saya', { replace: true, state: { paymentSuccess: true, transactionId } });
+        } else if (initialStatus === 'pending') {
+          // Mulai polling
+          startPolling(transactionId);
+        } else {
+          // Status failed/expired, tampilkan error
+          setError('Transaksi tidak valid atau sudah kadaluwarsa.');
+        }
       } catch (err) {
         console.error('Error fetching payment:', err);
         setError(err.message || 'Gagal terhubung ke server');
@@ -58,20 +150,30 @@ export default function PembayaranPolis() {
     };
 
     fetchPembayaran();
-  }, [transactionId, location.state]);
 
+    // Cleanup saat komponen unmount
+    return () => {
+      stopPolling();
+    };
+  }, [transactionId, location.state, navigate]);
+
+  // Handler simpan QR (simulasi)
   const handleSimpanQR = () => {
-    alert('QR Code disimpan (simulasi).');
+    // Di sini bisa diimplementasikan download QR sebagai gambar
+    alert('Kode QR berhasil disimpan (simulasi).');
   };
 
   const handleKembali = () => {
+    stopPolling();
     navigate(-1);
   };
 
   const handleLihatPolis = () => {
+    stopPolling();
     navigate('/polis-saya');
   };
 
+  // Tampilkan loading
   if (loading) {
     return (
       <div className="min-h-screen py-8 px-4 flex justify-center items-center">
@@ -80,6 +182,7 @@ export default function PembayaranPolis() {
     );
   }
 
+  // Tampilkan error jika ada
   if (error || !data) {
     return (
       <div className="min-h-screen py-8 px-4 flex justify-center items-center">
@@ -115,6 +218,34 @@ export default function PembayaranPolis() {
             </p>
             <p className="text-sm font-semibold text-gray-700 mt-2">{productName || 'Produk Asuransi'}</p>
             {namaPenerima && <p className="text-xs text-gray-500 mt-1">Penerima: {namaPenerima} ({nikPenerima || '-'})</p>}
+          </div>
+
+          {/* Status pembayaran */}
+          <div className="text-center">
+            {paymentStatus === 'pending' && (
+              <div className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+                <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                Menunggu pembayaran...
+              </div>
+            )}
+            {paymentStatus === 'success' && (
+              <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm inline-flex items-center gap-2">
+                <span>✓</span> Pembayaran berhasil! Mengalihkan...
+              </div>
+            )}
+            {paymentStatus === 'failed' && (
+              <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
+                Pembayaran gagal. Silakan coba lagi.
+              </div>
+            )}
+            {paymentStatus === 'expired' && (
+              <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
+                Waktu pembayaran habis.
+              </div>
+            )}
+            {countdown > 0 && paymentStatus === 'pending' && (
+              <p className="text-xs text-gray-500 mt-2">Sisa waktu: {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')} menit</p>
+            )}
           </div>
 
           {/* QR Code */}

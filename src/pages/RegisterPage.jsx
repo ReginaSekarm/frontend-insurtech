@@ -131,7 +131,7 @@ export default function RegisterPage() {
           setShowEmailPopup(true);
           setTimeout(() => setShowEmailPopup(false), 3000);
         } else {
-          // Menampilkan error validasi Laravel dengan lebih rapi (jika ada)
+          // Menampilkan error validasi Laravel dengan lebih rapi 
           const errorMsg = data.errors 
             ? Object.values(data.errors).flat().join(', ') 
             : data.message;
@@ -318,7 +318,7 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Dokumen Pendukung - label KTP dan KK di kiri */}
+            {/* Dokumen Pendukung */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Dokumen Pendukung</label>
               <div className="flex flex-col gap-2">
@@ -404,7 +404,7 @@ export default function RegisterPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-gray-800">Perhatian</h3>
+              <h3 className="text-lg font-bold text-gray-800">Email Sudah Terdaftar</h3>
               <p className="text-gray-600 text-sm mt-2">{emailPopupMsg}</p>
             </div>
           </div>
@@ -429,10 +429,51 @@ export default function RegisterPage() {
                 <h3 className="font-bold text-base mb-2">1. Penerimaan syarat</h3>
                 <p>Dengan mendaftar, mengakses, atau menggunakan layanan InsurTech, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang tercantum dalam dokumen ini. Jika Anda tidak menyetujui syarat ini, harap tidak melanjutkan penggunaan layanan.</p>
               </div>
-              {/* Bagian syarat & ketentuan lainnya... */}
               <div>
                 <h3 className="font-bold text-base mb-2">2. Definisi layanan</h3>
-                <p>InsurTech adalah platform teknologi asuransi yang menyediakan: ...</p>
+                <p>InsurTech adalah platform teknologi asuransi yang menyediakan:</p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Perbandingan dan pembelian produk asuransi dari berbagai mitra penyedia</li>
+                  <li>Pengajuan klaim secara digital dan pemantauan statusnya</li>
+                  <li>Pengelolaan polis asuransi secara terpadu dalam satu platform</li>
+                  <li>Konsultasi dan rekomendasi produk asuransi berdasarkan kebutuhan</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">3. Kelayakan pengguna</h3>
+                <p>Layanan InsurTech hanya dapat digunakan oleh:</p>
+                <ul className="list-disc pl-5 mt-1">
+                  <li>Individu berusia minimal 17 tahun atau yang telah memiliki KTP</li>
+                  <li>Warga Negara Indonesia atau warga asing yang berdomisili di Indonesia</li>
+                  <li>Badan usaha yang terdaftar secara sah di Indonesia</li>
+                </ul>
+                <p className="mt-1">InsurTech berhak menolak atau menonaktifkan akun yang tidak memenuhi kelayakan ini.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">4. Akun dan keamanan</h3>
+                <p>Pengguna bertanggung jawab untuk menjaga kerahasiaan informasi login dan semua aktivitas yang terjadi di akunnya. InsurTech tidak bertanggung jawab atas kerugian akibat kelalaian pengguna dalam menjaga keamanan akun.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">5. Kewajiban pengguna</h3>
+                <p>Pengguna wajib:</p>
+                <ul className="list-disc pl-5 mt-1">
+                  <li>Memberikan informasi yang akurat, lengkap, dan terkini</li>
+                  <li>Tidak menyalahgunakan platform untuk tujuan penipuan atau ilegal</li>
+                  <li>Tidak melakukan tindakan yang merusak sistem atau pengalaman pengguna lain</li>
+                  <li>Memahami peraturan perundang-undangan yang berlaku di Indonesia</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">6. Pembatasan tanggung jawab</h3>
+                <p>InsurTech bertindak sebagai platform perantara dan tidak bertanggung jawab atas keputusan underwriting, penolakan klaim, atau tindakan lain dari mitra asuransi. Semua ketentuan polis mengacu pada dokumen polis dari penerbit asuransi terkait.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">7. Perubahan layanan</h3>
+                <p>InsurTech berhak mengubah, memperbaiki, atau menghentikan fitur layanan sewaktu-waktu. Perubahan material pada syarat dan ketentuan akan diinformasikan melalui email atau notifikasi dalam aplikasi minimal 14 hari sebelum berlaku.</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-base mb-2">8. Hukum yang berlaku</h3>
+                <p>Syarat dan ketentuan ini tunduk pada hukum Republik Indonesia. Setiap perselisihan yang timbul akan diselesaikan melalui musyawarah terlebih dahulu, dan apabila tidak tercapai kesepakatan, akan diselesaikan melalui Pengadilan Negeri Jakarta Selatan.</p>
               </div>
             </div>
           </div>
