@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { FaDownload, FaHome } from 'react-icons/fa';
+// PERBAIKAN: Menambahkan FaArrowLeft ke dalam daftar import ikon
+import { FaDownload, FaHome, FaArrowLeft } from 'react-icons/fa';
 
 export default function PembayaranPremi() {
   const location = useLocation();
@@ -22,12 +23,17 @@ export default function PembayaranPremi() {
       }
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/pembayaran-premi/${transactionId}`, {
+        
+        // PERBAIKAN UTAMA: Menggunakan URL absolut ke server Laravel Anda
+        const response = await fetch(`http://127.0.0.1:8000/api/pembayaran-premi/${transactionId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           },
         });
-        if (!response.ok) throw new Error('Gagal mengambil data pembayaran');
+        
+        if (!response.ok) throw new Error('Gagal mengambil data pembayaran dari server');
         const result = await response.json();
         setData(result);
       } catch (err) {
@@ -54,18 +60,20 @@ export default function PembayaranPremi() {
 
   if (loading) {
     return (
-      <div className="min-h-screen py-8 px-4 flex justify-center items-center">
-        <div className="text-center">Memuat data pembayaran...</div>
+      <div className="min-h-screen py-8 px-4 flex justify-center items-center bg-gray-50">
+        <div className="text-center font-medium text-gray-500">Memuat data pembayaran...</div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen py-8 px-4 flex justify-center items-center">
-        <div className="bg-white p-6 rounded-xl shadow-md text-center">
-          <p className="text-red-600">Error: {error || 'Data tidak ditemukan'}</p>
-          <button onClick={() => navigate(-1)} className="mt-3 text-blue-600">Kembali</button>
+      <div className="min-h-screen py-8 px-4 flex justify-center items-center bg-gray-50">
+        <div className="bg-white p-6 rounded-xl shadow-md text-center border border-gray-100 max-w-sm w-full">
+          <p className="text-red-600 font-semibold">Error: {error || 'Data tidak ditemukan'}</p>
+          <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-sky-950 text-white rounded-xl text-sm font-medium transition hover:bg-sky-900">
+            Kembali
+          </button>
         </div>
       </div>
     );
@@ -74,12 +82,12 @@ export default function PembayaranPremi() {
   const { jenis, noPolis, total, transactionId: id } = data;
 
   return (
-    <div className="min-h-screen py-8 px-4 relative">
-      <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+    <div className="min-h-screen py-8 px-4 bg-gray-50">
+      <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
         {/* Header */}
-        <div className="p-4 border-b flex items-center gap-3">
-          <button onClick={handleKembali} className="text-gray-600 hover:text-gray-900">
-            <FaArrowLeft />
+        <div className="p-4 border-b flex items-center gap-3 bg-white">
+          <button onClick={handleKembali} className="text-gray-600 hover:text-gray-900 transition p-1">
+            <FaArrowLeft size={16} />
           </button>
           <h1 className="text-xl font-bold text-gray-800">Pembayaran Premi</h1>
         </div>
@@ -94,25 +102,27 @@ export default function PembayaranPremi() {
           </div>
 
           {/* Total Pembayaran */}
-          <div className="text-center">
+          <div className="text-center bg-gray-50 py-4 rounded-xl border border-gray-100">
             <p className="text-gray-500 text-sm">Total premi yang harus dibayar bulan ini</p>
-            <p className="text-3xl font-extrabold text-sky-950">
+            <p className="text-3xl font-extrabold text-sky-950 mt-1">
               Rp {total?.toLocaleString('id-ID')}
             </p>
           </div>
 
           {/* QR Code */}
-          <div className="flex flex-col items-center border-y py-4">
-            <QRCodeSVG value={id} size={180} />
-            <p className="text-xs text-gray-500 mt-2 break-all text-center px-4">
+          <div className="flex flex-col items-center border-y py-4 bg-white">
+            <div className="p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <QRCodeSVG value={id || 'PAY-UNKNOWN'} size={180} />
+            </div>
+            <p className="text-xs text-gray-400 font-mono mt-3 break-all text-center px-4 tracking-wide bg-gray-50 py-1 rounded-full">
               {id}
             </p>
           </div>
 
           {/* Petunjuk Pembayaran QRIS */}
-          <div className="text-sm space-y-2">
-            <h3 className="font-semibold text-gray-700">Petunjuk Pembayaran QRIS</h3>
-            <ol className="list-decimal pl-5 space-y-1 text-gray-600 text-xs">
+          <div className="text-sm space-y-2 bg-blue-50/50 p-4 rounded-xl border border-blue-100/30">
+            <h3 className="font-semibold text-gray-700 text-xs uppercase tracking-wider">Petunjuk Pembayaran QRIS</h3>
+            <ol className="list-decimal pl-4 space-y-1.5 text-gray-600 text-xs leading-relaxed">
               <li>Simpan atau screenshot Kode QR, yang berlaku selama 20 menit. Kamu bisa muat ulang untuk dapatkan kode baru.</li>
               <li>Scan Kode QR dengan m-banking, dompet elektronik, atau aplikasi pembayaran lain.</li>
               <li>Pastikan rincian pembayaran telah sesuai, lalu lanjutkan pembayaran.</li>
@@ -122,22 +132,23 @@ export default function PembayaranPremi() {
             </ol>
           </div>
 
-          {/* Tombol Simpan QR Code */}
-          <button
-            onClick={handleSimpanQR}
-            className="w-full bg-sky-950 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition"
-          >
-            <FaDownload size={16} />
-            Simpan Kode QR
-          </button>
+          {/* Tombol Aksi */}
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={handleSimpanQR}
+              className="w-full bg-sky-950 hover:bg-sky-900 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 shadow transition text-sm"
+            >
+              <FaDownload size={14} />
+              Simpan Kode QR
+            </button>
 
-          {/* Tombol Lihat Riwayat Transaksi */}
-          <button
-            onClick={handleLihatRiwayat}
-            className="w-full bg-sky-950 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition"
-          >
-            Lihat Riwayat Transaksi
-          </button>
+            <button
+              onClick={handleLihatRiwayat}
+              className="w-full bg-white hover:bg-gray-50 text-sky-950 border border-gray-200 font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition text-sm"
+            >
+              Lihat Riwayat Transaksi
+            </button>
+          </div>
         </div>
       </div>
     </div>

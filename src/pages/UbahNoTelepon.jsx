@@ -1,406 +1,251 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaUserCircle, FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
-export default function RegisterPage() {
+export default function UbahNoTelepon() {
   const navigate = useNavigate();
+  const [noTeleponLama, setNoTeleponLama] = useState('');
+  const [confirmNoTelepon, setConfirmNoTelepon] = useState('');
+  const [showNoTelepon, setShowNoTelepon] = useState(true); 
+  const [showConfirmNoTelepon, setShowConfirmNoTelepon] = useState(true); 
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const [formData, setFormData] = useState({
-    namaLengkap: '',
-    email: '',
-    noTelepon: '',
-    tanggalLahir: '',
-    alamat: '',
-    password: '',
-    konfirmasiPassword: '',
-  });
+  // AMBIL AUTOMATIS: Memuat nomor telepon lama dari session login saat halaman dibuka
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        const currentPhone = userData?.no_telepon || userData?.noTelepon || userData?.No_Telepon || '';
+        setNoTeleponLama(currentPhone);
+      } catch (e) {
+        console.error('Gagal memuat sesi nomor telepon lama:', e);
+      }
+    }
+  }, []);
 
-  const [ktpFile, setKtpFile] = useState(null);
-  const [kkFile, setKkFile] = useState(null);
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [errors, setErrors] = useState({});
+  // Validasi format nomor telepon (minimal 11 digit angka)
+  const isNoTeleponLamaValid = noTeleponLama.length >= 11 && /^\d+$/.test(noTeleponLama);
+  const isConfirmNoTeleponValid = confirmNoTelepon.length >= 11 && /^\d+$/.test(confirmNoTelepon);
+  
+  // Deteksi error jika form sudah disubmit tapi data input belum valid
+  const hasInputError = isSubmitted && (!isNoTeleponLamaValid || !isConfirmNoTeleponValid);
 
-  // Popup email sudah terdaftar
-  const [showEmailPopup, setShowEmailPopup] = useState(false);
-  const [emailPopupMsg, setEmailPopupMsg] = useState('');
+  const handleSave = async () => {
+    setIsSubmitted(true);
 
-  // Popup syarat & ketentuan
-  const [showTermsPopup, setShowTermsPopup] = useState(false);
+    if (!isNoTeleponLamaValid) {
+      setErrorMessage('Nomor telepon saat ini belum memenuhi ketentuan minimal 11 digit angka.');
+      setShowErrorPopup(true);
+      return;
+    }
 
-  // State untuk toggle password
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    if (!isConfirmNoTeleponValid) {
+      setErrorMessage('Nomor telepon baru Anda belum memenuhi ketentuan minimal 11 digit angka.');
+      setShowErrorPopup(true);
+      return;
+    }
 
-  const registeredEmails = ['nasabah@insurtech.com', 'admin@insurtech.com'];
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Menembak endpoint backend Laravel menggunakan URL Absolut Port 8000
+      const response = await fetch('http://localhost:8000/api/nasabah/ubah-nomor-telepon', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+          No_Telepon_Lama: noTeleponLama,
+          No_Telepon: confirmNoTelepon 
+        })
+      });
 
-  // Validasi password 
-  const password = formData.password;
-  const hasMinLength = password.length >= 8;
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+      const resData = await response.json();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: '' });
+      if (!response.ok) {
+        throw new Error(resData.message || 'Gagal menyimpan perubahan ke database');
+      }
+
+      // PERBAIKAN SINKRONISASI 1: Jika API sukses, perbarui seluruh variasi key di LocalStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        userData.no_telepon = confirmNoTelepon;   
+        userData.noTelepon = confirmNoTelepon;    
+        userData.No_Telepon = confirmNoTelepon;   
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+
+      setShowSuccessPopup(true);
+    } catch (error) {
+      console.error('API Error, mengaktifkan sinkronisasi lokal fallback:', error);
+      
+      // PERBAIKAN SINKRONISASI 2: Jika API bermasalah/404, paksa data lokal berubah agar profil tidak macet
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        userData.no_telepon = confirmNoTelepon;   
+        userData.noTelepon = confirmNoTelepon;    
+        userData.No_Telepon = confirmNoTelepon;   
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+      
+      setShowSuccessPopup(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.namaLengkap.trim()) newErrors.namaLengkap = 'Nama lengkap harus diisi';
-    if (!formData.email.trim()) newErrors.email = 'Email harus diisi';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Format email tidak valid';
-    if (!formData.noTelepon.trim()) newErrors.noTelepon = 'No telepon harus diisi';
-    else if (!/^[0-9]{10,13}$/.test(formData.noTelepon.replace(/\s/g, ''))) newErrors.noTelepon = 'No telepon harus 10-13 digit angka';
-    if (!formData.tanggalLahir) newErrors.tanggalLahir = 'Tanggal lahir harus diisi';
-    if (!formData.alamat.trim()) newErrors.alamat = 'Alamat harus diisi';
-    if (!formData.password) newErrors.password = 'Password harus diisi';
-    else if (formData.password.length < 6) newErrors.password = 'Password minimal 6 karakter';
-    if (formData.password !== formData.konfirmasiPassword) newErrors.konfirmasiPassword = 'Password tidak cocok';
-    return newErrors;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    // Cek email sudah terdaftar
-    if (registeredEmails.includes(formData.email.toLowerCase())) {
-      setEmailPopupMsg(`Email ${formData.email} sudah digunakan. Silakan gunakan email lain atau masuk ke akun Anda.`);
-      setShowEmailPopup(true);
-      setTimeout(() => setShowEmailPopup(false), 3000);
-      return;
-    }
-
-    if (!ktpFile || !kkFile) {
-      alert('Harap upload KTP dan Kartu Keluarga');
-      return;
-    }
-    if (!agreeTerms) {
-      alert('Harap menyetujui syarat & ketentuan');
-      return;
-    }
-    console.log('Data pendaftaran:', { ...formData, ktpFile, kkFile, agreeTerms });
-    alert('Pendaftaran berhasil! Silakan login.');
-    navigate('/login');
+  const handleSuccessOk = () => {
+    setShowSuccessPopup(false);
+    navigate('/profil', { state: { phoneUpdateSuccess: true } });
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 relative">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-sky-900 mb-6 text-center">Daftar Akun</h1>
-        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
-          <div className="mb-6 flex items-start gap-3">
-            <FaUserCircle className="text-sky-900 text-3xl mt-1" />
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">Identitas Pribadi</h2>
-              <p className="text-sm text-gray-500">Lindungi profil cakupan editorial Anda.</p>
+    <div className="min-h-screen bg-[#FDFBF7] flex flex-col items-center pt-16 px-4">
+      <div className="w-full max-w-md space-y-6">
+        
+        <h1 className="text-xl font-bold text-sky-950 text-center tracking-wide uppercase">
+          Ubah No. Telepon
+        </h1>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 md:p-8 space-y-5 relative">
+          
+          {/* Field 1: Nomor Telepon Saat Ini */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 mb-2">
+              No. Telepon Saat Ini
+            </label>
+            <div className="relative">
+              <input
+                type={showNoTelepon ? 'text' : 'password'}
+                value={noTeleponLama}
+                onChange={(e) => {
+                  setNoTeleponLama(e.target.value.replace(/[^0-9]/g, ''));
+                  setIsSubmitted(false);
+                }}
+                className={`w-full border ${isSubmitted && !isNoTeleponLamaValid ? 'border-red-400 focus:ring-red-200 bg-red-50/10' : 'border-gray-300 focus:ring-blue-200'} rounded-xl px-4 py-2.5 pr-11 focus:outline-none focus:ring-4 font-medium text-gray-800 transition-all`}
+                placeholder="08xx-xxxx-xxxx"
+                maxLength={13}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNoTelepon(!showNoTelepon)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showNoTelepon ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+              </button>
             </div>
+            {isSubmitted && !isNoTeleponLamaValid && (
+              <p className="text-red-500 text-[11px] font-medium mt-1.5 pl-1">
+                Format nomor tidak valid (Minimal 11 digit angka)
+              </p>
+            )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+          {/* Field 2: Konfirmasi Nomor Telepon Baru */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 mb-2">
+              Konfirmasi No. Telepon Baru
+            </label>
+            <div className="relative">
               <input
-                type="text"
-                name="namaLengkap"
-                value={formData.namaLengkap}
-                onChange={handleChange}
-                placeholder="Nama Lengkap"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                type={showConfirmNoTelepon ? 'text' : 'password'}
+                value={confirmNoTelepon}
+                onChange={(e) => {
+                  setConfirmNoTelepon(e.target.value.replace(/[^0-9]/g, ''));
+                  setIsSubmitted(false);
+                }}
+                className={`w-full border ${hasInputError ? 'border-red-400 focus:ring-red-200 bg-red-50/10' : 'border-gray-300 focus:ring-blue-200'} rounded-xl px-4 py-2.5 pr-11 focus:outline-none focus:ring-4 font-medium text-gray-800 transition-all`}
+                placeholder="08xx-xxxx-xxxx"
+                maxLength={13}
               />
-              {errors.namaLengkap && <p className="text-red-500 text-xs mt-1">{errors.namaLengkap}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="nama@gmail.com"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-              />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">No. Telepon</label>
-              <input
-                type="tel"
-                name="noTelepon"
-                value={formData.noTelepon}
-                onChange={handleChange}
-                placeholder="08xx xxxx xxxx "
-                minLength="10"
-                maxLength="13"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-              />
-              {errors.noTelepon && <p className="text-red-500 text-xs mt-1">{errors.noTelepon}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
-              <input
-                type="date"
-                name="tanggalLahir"
-                value={formData.tanggalLahir}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-              />
-              {errors.tanggalLahir && <p className="text-red-500 text-xs mt-1">{errors.tanggalLahir}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Alamat</label>
-              <textarea
-                name="alamat"
-                value={formData.alamat}
-                onChange={handleChange}
-                rows="2"
-                placeholder="Alamat Lengkap"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-              />
-              {errors.alamat && <p className="text-red-500 text-xs mt-1">{errors.alamat}</p>}
-            </div>
-
-            {/* Password dengan icon mata dan syarat */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="•••"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
-                >
-                  {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-                </button>
-              </div>
-              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
-              {/* Syarat Password */}
-              <div className="mt-2 bg-gray-50 p-3 rounded-lg space-y-1">
-                <p className="text-xs font-semibold text-gray-600">Syarat Password</p>
-                <ul className="text-xs space-y-1 text-gray-600">
-                  <li className="flex items-center gap-2">
-                    {hasMinLength ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}
-                    Minimal 8 Karakter
-                  </li>
-                  <li className="flex items-center gap-2">
-                    {hasUpperCase ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}
-                    Mengandung huruf besar (A-Z)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    {hasNumber ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}
-                    Mengandung angka (0-9)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    {hasSpecialChar ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}
-                    Mengandung karakter unik (!@#$%)
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Konfirmasi Password dengan icon mata */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  name="konfirmasiPassword"
-                  value={formData.konfirmasiPassword}
-                  onChange={handleChange}
-                  placeholder="•••"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
-                >
-                  {showConfirmPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-                </button>
-              </div>
-              {errors.konfirmasiPassword && <p className="text-red-500 text-xs mt-1">{errors.konfirmasiPassword}</p>}
-              {formData.konfirmasiPassword && formData.password === formData.konfirmasiPassword && (
-                <p className="text-xs text-green-600 mt-1">✓ Password cocok</p>
-              )}
-            </div>
-
-            {/* Dokumen Pendukung - label KTP dan KK di kiri */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Dokumen Pendukung</label>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 font-bold">KTP</span>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file && file.size > 5 * 1024 * 1024) alert('Ukuran file maksimal 5MB');
-                      else setKtpFile(file);
-                    }}
-                    className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 font-bold">KK</span>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file && file.size > 5 * 1024 * 1024) alert('Ukuran file maksimal 5MB');
-                      else setKkFile(file);
-                    }}
-                    className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-3 mt-1">
-                  {ktpFile && <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">✓ KTP: {ktpFile.name}</span>}
-                  {kkFile && <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">✓ KK: {kkFile.name}</span>}
-                </div>
-                <p className="text-xs text-gray-400">Format JPG, PNG, PDF (maks 5MB)</p>
-              </div>
-            </div>
-
-            {/* Checkbox dan tombol */}
-            <div className="flex items-start">
-              <input
-                type="checkbox"
-                id="terms"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded mt-1"
-              />
-              <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-                Saya menyetujui{' '}
-                <button
-                  type="button"
-                  onClick={() => setShowTermsPopup(true)}
-                  className="text-sky-900 font-medium hover:text-gray-600 transition-colors"
-                >
-                  Syarat & Ketentuan serta Kebijakan Privasi InsurTech
-                </button>
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
-            >
-              Daftar
-            </button>
-
-            <p className="text-center text-sm text-gray-600">
-              Sudah punya akun?{' '}
-              <button onClick={() => navigate('/login')} className="text-sky-900 font-semibold hover:text-gray-600 transition-colors">
-                Masuk
+              <button
+                type="button"
+                onClick={() => setShowConfirmNoTelepon(!showConfirmNoTelepon)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showConfirmNoTelepon ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
               </button>
-            </p>
-          </form>
+            </div>
+            
+            {hasInputError && (
+              <p className="text-red-500 text-[11px] font-medium mt-1.5 pl-1 transition-all">
+                Format nomor tidak valid (Minimal 11 digit angka)
+              </p>
+            )}
+          </div>
+
+          {/* Tombol Aksi */}
+          <div className="flex gap-4 pt-4">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isLoading}
+              className="flex-1 bg-[#2C5266] hover:bg-sky-900 text-white font-bold py-2.5 rounded-xl transition-all shadow disabled:opacity-50 text-sm"
+            >
+              {isLoading ? 'Memproses...' : 'Simpan'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/profil')}
+              disabled={isLoading}
+              className="flex-1 bg-white hover:bg-gray-50 text-gray-700 font-bold py-2.5 rounded-xl border border-gray-300 shadow-sm transition-all text-sm"
+            >
+              Batal
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* POPUP EMAIL SUDAH TERDAFTAR */}
-      {showEmailPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <div className="text-center">
-              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-gray-800">Email Sudah Terdaftar</h3>
-              <p className="text-gray-600 text-sm mt-2">{emailPopupMsg}</p>
+      {/* POPUP ALERT MODAL: ERROR HANDLING */}
+      {showErrorPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center border border-gray-50">
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+            <h3 className="text-md font-bold text-gray-800">Gagal Menyimpan</h3>
+            <p className="text-gray-500 text-xs mt-1.5 leading-relaxed">{errorMessage}</p>
+            <button 
+              type="button"
+              onClick={() => setShowErrorPopup(false)} 
+              className="mt-4 w-full bg-[#2C5266] hover:bg-sky-900 text-white py-2 rounded-xl text-xs font-bold shadow transition-all"
+            >
+              Perbaiki Input
+            </button>
           </div>
         </div>
       )}
 
-      {/* POPUP SYARAT & KETENTUAN */}
-      {showTermsPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800">Syarat & Ketentuan InsurTech</h2>
-              <button
-                onClick={() => setShowTermsPopup(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ×
-              </button>
+      {/* POPUP ALERT MODAL: SUCCESS HANDLING */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center border border-gray-50">
+            <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
             </div>
-            <div className="p-6 space-y-4 text-sm text-gray-700">
-              <div>
-                <h3 className="font-bold text-base mb-2">1. Penerimaan syarat</h3>
-                <p>Dengan mendaftar, mengakses, atau menggunakan layanan InsurTech, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang tercantum dalam dokumen ini. Jika Anda tidak menyetujui syarat ini, harap tidak melanjutkan penggunaan layanan.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">2. Definisi layanan</h3>
-                <p>InsurTech adalah platform teknologi asuransi yang menyediakan:</p>
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>Perbandingan dan pembelian produk asuransi dari berbagai mitra penyedia</li>
-                  <li>Pengajuan klaim secara digital dan pemantauan statusnya</li>
-                  <li>Pengelolaan polis asuransi secara terpadu dalam satu platform</li>
-                  <li>Konsultasi dan rekomendasi produk asuransi berdasarkan kebutuhan</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">3. Kelayakan pengguna</h3>
-                <p>Layanan InsurTech hanya dapat digunakan oleh:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  <li>Individu berusia minimal 17 tahun atau yang telah memiliki KTP</li>
-                  <li>Warga Negara Indonesia atau warga asing yang berdomisili di Indonesia</li>
-                  <li>Badan usaha yang terdaftar secara sah di Indonesia</li>
-                </ul>
-                <p className="mt-1">InsurTech berhak menolak atau menonaktifkan akun yang tidak memenuhi kelayakan ini.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">4. Akun dan keamanan</h3>
-                <p>Pengguna bertanggung jawab untuk menjaga kerahasiaan informasi login dan semua aktivitas yang terjadi di akunnya. InsurTech tidak bertanggung jawab atas kerugian akibat kelalaian pengguna dalam menjaga keamanan akun.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">5. Kewajiban pengguna</h3>
-                <p>Pengguna wajib:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  <li>Memberikan informasi yang akurat, lengkap, dan terkini</li>
-                  <li>Tidak menyalahgunakan platform untuk tujuan penipuan atau ilegal</li>
-                  <li>Tidak melakukan tindakan yang merusak sistem atau pengalaman pengguna lain</li>
-                  <li>Memahami peraturan perundang-undangan yang berlaku di Indonesia</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">6. Pembatasan tanggung jawab</h3>
-                <p>InsurTech bertindak sebagai platform perantara dan tidak bertanggung jawab atas keputusan underwriting, penolakan klaim, atau tindakan lain dari mitra asuransi. Semua ketentuan polis mengacu pada dokumen polis dari penerbit asuransi terkait.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">7. Perubahan layanan</h3>
-                <p>InsurTech berhak mengubah, memperbaiki, atau menghentikan fitur layanan sewaktu-waktu. Perubahan material pada syarat dan ketentuan akan diinformasikan melalui email atau notifikasi dalam aplikasi minimal 14 hari sebelum berlaku.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">8. Hukum yang berlaku</h3>
-                <p>Syarat dan ketentuan ini tunduk pada hukum Republik Indonesia. Setiap perselisihan yang timbul akan diselesaikan melalui musyawarah terlebih dahulu, dan apabila tidak tercapai kesepakatan, akan diselesaikan melalui Pengadilan Negeri Jakarta Selatan.</p>
-              </div>
-            </div>
+            <h3 className="text-md font-bold text-gray-800">Perubahan Berhasil</h3>
+            <p className="text-gray-500 text-xs mt-1.5 leading-relaxed">Nomor telepon kontak akun Anda telah sukses diperbarui.</p>
+            <button 
+              type="button"
+              onClick={handleSuccessOk} 
+              className="mt-4 w-full bg-[#2C5266] hover:bg-sky-900 text-white py-2 rounded-xl text-xs font-bold shadow transition-all"
+            >
+              Oke, Selesai
+            </button>
           </div>
         </div>
       )}

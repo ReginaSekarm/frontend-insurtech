@@ -39,10 +39,13 @@ export default function BayarPremi() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/transaksi/premi', {
+      
+      // PERBAIKAN UTAMA: Arahkan url fetch ke endpoint baru Laravel kita secara dinamis menggunakan noPolis
+      const response = await fetch(`http://127.0.0.1:8000/api/polis/${noPolis}/bayar-premi`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
@@ -56,9 +59,12 @@ export default function BayarPremi() {
       if (!response.ok) throw new Error('Gagal memproses pembayaran');
 
       const data = await response.json();
-      // data berisi transactionId, dll sesuai respons backend
-      const transactionId = data.transactionId || `NMD-ID${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      const resData = data.data || data;
 
+      // PERBAIKAN: Tangkap properti transaction_id (snake_case) yang dikirim oleh backend Laravel kita
+      const transactionId = resData.transaction_id || resData.transactionId || `PAY-${Date.now()}`;
+
+      // Pindah halaman ke tampilan QRIS sambil melempar state data yang dibutuhkan
       navigate('/pembayaran-premi', {
         state: {
           jenis: jenis,
@@ -127,7 +133,7 @@ export default function BayarPremi() {
           <button
             onClick={handleBayarNow}
             disabled={loading}
-            className="w-full bg-sky-950 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg transition shadow-md disabled:opacity-50"
+            className="w-full bg-sky-950 hover:bg-sky-900 text-white font-semibold py-3 rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Memproses...' : 'Bayar Sekarang'}
           </button>

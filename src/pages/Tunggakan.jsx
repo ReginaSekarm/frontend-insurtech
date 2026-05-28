@@ -12,13 +12,19 @@ export default function Tunggakan() {
     const fetchTunggakan = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/nasabah/tunggakan', {
+        
+        // Memanggil URL absolut backend Laravel
+        const response = await fetch('http://127.0.0.1:8000/api/nasabah/tunggakan', {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           }
         });
+        
         if (!response.ok) throw new Error('Gagal mengambil data tunggakan');
         const data = await response.json();
+        
         setTotalTunggakan(data.totalTunggakan || 0);
         setJumlahTagihan(data.jumlahTagihan || 0);
       } catch (err) {
@@ -32,7 +38,7 @@ export default function Tunggakan() {
   }, []);
 
   if (loading) {
-    return <div className="max-w-4xl mx-auto p-6 text-center">Memuat data tunggakan...</div>;
+    return <div className="max-w-4xl mx-auto p-6 text-center font-medium text-gray-500">Memuat data tunggakan...</div>;
   }
 
   if (error) {
@@ -64,13 +70,13 @@ export default function Tunggakan() {
       </div>
 
       {totalTunggakan === 0 && (
-        <div className="bg-white/10 rounded-xl p-6 text-center">
+        <div className="bg-white rounded-xl p-8 text-center border border-gray-100 shadow-sm">
           <div className="flex justify-center mb-3">
-            <FaCheckCircle className="text-green-500 text-4xl" />
+            <FaCheckCircle className="text-green-500 text-5xl" />
           </div>
-          <p className="text-lg font-semibold text-black">Semua Tagihan Lunas</p>
-          <p className="text-sm text-black/80 mt-1">
-            Tidak ada tunggakan saat ini. Polis aktif dan terlindungi.
+          <p className="text-xl font-bold text-gray-800">Semua Tagihan Lunas</p>
+          <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+            Tidak ada tunggakan saat ini. Seluruh polis Anda aktif dan terlindungi sepenuhnya.
           </p>
         </div>
       )}

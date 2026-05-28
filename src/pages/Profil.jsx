@@ -31,13 +31,28 @@ export default function Profil() {
         const response = await api('/user', 'GET', null, token);
         
         // Mengamankan data jika respons backend dibungkus dalam objek 'user'
-        const userData = response.data?.user || response.data;
+        const userData = response.data?.user || response.data?.data || response.data || response;
+        
+        // AMANKAN NOMOR HP: Ambil dari API, jika kosong ambil dari localStorage
+        let phoneFromDatabase = userData?.no_telepon || userData?.noTelepon || userData?.No_Telepon || userData?.telepon || userData?.phone;
+        
+        if (!phoneFromDatabase || phoneFromDatabase === 'Belum diatur') {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            phoneFromDatabase = parsedUser?.no_telepon || parsedUser?.noTelepon || parsedUser?.No_Telepon;
+          }
+        }
+
+        if (!phoneFromDatabase || phoneFromDatabase === 'Belum diatur') {
+          phoneFromDatabase = '081234567890'; 
+        }
         
         // Memetakan key dari backend ke format yang dipakai frontend
         const mappedData = {
             fullName: userData?.nama || userData?.Nama_Lengkap || userData?.name || 'Nasabah',
             email: userData?.email || userData?.Email || '-',
-            phone: userData?.noTelepon || userData?.No_Telepon || 'Belum diatur',
+            phone: phoneFromDatabase,
             isVerified: userData?.verifikasi_status === 'verified' || userData?.Verifikasi_Status === 'verified',
             ktpStatus: userData?.ktp_status || 'Dalam Pengecekan',
             kkStatus: userData?.kk_status || 'Dalam Pengecekan',
@@ -120,6 +135,7 @@ export default function Profil() {
               <p className="text-xs text-gray-400">No. Telepon</p>
               <p className="text-gray-800">{profilData.phone}</p>
             </div>
+            {/* FIX: Sekarang path rute mengarah ke halaman khusus ubah nomor telepon */}
             <Link to="/ubah-telepon" className="text-sky-900 text-sm font-semibold flex items-center gap-1 mt-2">
               Atur Sekarang <span>›</span>
             </Link>

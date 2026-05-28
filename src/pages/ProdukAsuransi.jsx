@@ -14,9 +14,11 @@ export default function ProdukAsuransi() {
     namaPenerima: '',
     nikPenerima: '',
   });
+  
+  // State baru untuk menampung pesan kesalahan validasi input modal
+  const [errors, setErrors] = useState({});
   const [errorPopup, setErrorPopup] = useState({ show: false, message: '' });
   
-  // State untuk data dari API
   const [products, setProducts] = useState({});
   const [pertanggunganOptions, setPertanggunganOptions] = useState({});
   const [loading, setLoading] = useState(true);
@@ -29,33 +31,26 @@ export default function ProdukAsuransi() {
     { name: 'Pendidikan', icon: <FaGraduationCap />, iconColor: 'text-zinc-600' }
   ];
 
-  // Fetch data produk dari API
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
         const response = await api('/produk', 'GET', null, token);
         
-        // Mengamankan pembacaan data array dari Axios / Fetch Helper
         const produkData = Array.isArray(response) ? response : (response.data || []);
         
-        // Kelompokkan berdasarkan kategori
         const grouped = {};
         if (Array.isArray(produkData)) {
             produkData.forEach(prod => {
-              // PERBAIKAN UTAMA: Pastikan membaca 'Kategori_Produk' dari Laravel jika 'kategori' kosong
               const katRaw = prod.kategori || prod.Kategori_Produk || 'Kesehatan';
               
-              // Normalisasi ejaan huruf agar pas dengan state activeCategory (Kesehatan, Properti, dst)
               let kat = 'Kesehatan';
               if (katRaw.toLowerCase() === 'properti') kat = 'Properti';
               if (katRaw.toLowerCase() === 'kendaraan') kat = 'Kendaraan';
               if (katRaw.toLowerCase() === 'pendidikan' || katRaw.toLowerCase() === 'jiwa') kat = 'Pendidikan';
 
-              // Amankan data harga premi dan status aktif
               const statusRaw = (prod.status || prod.Status_Produk || 'aktif').toLowerCase();
               
-              // Hanya masukkan produk yang berstatus aktif/published ke halaman user
               if (statusRaw === 'aktif' || statusRaw === 'published') {
                 if (!grouped[kat]) grouped[kat] = [];
                 grouped[kat].push({
@@ -70,7 +65,6 @@ export default function ProdukAsuransi() {
         }
         setProducts(grouped);
 
-        // Ambil opsi pertanggungan
         try {
             const optionsRes = await api('/pertanggungan-options', 'GET', null, token);
             const optionsData = optionsRes.data || optionsRes || {};
@@ -96,6 +90,7 @@ export default function ProdukAsuransi() {
   const handlePilihClick = (product) => {
     setSelectedProduct(product);
     setFormData({ nilaiPertanggungan: '', namaPenerima: '', nikPenerima: '' });
+    setErrors({}); // Bersihkan log eror lama
     setErrorPopup({ show: false, message: '' });
     setShowModal(true);
   };
@@ -103,6 +98,11 @@ export default function ProdukAsuransi() {
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Hapus eror pada field terkait jika user mulai mengetik ulang
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const hitungPremi = () => {
@@ -117,7 +117,24 @@ export default function ProdukAsuransi() {
 
   const handleBeliPolis = () => {
     const { nilaiPertanggungan, namaPenerima, nikPenerima } = formData;
-    if (!nilaiPertanggungan || !namaPenerima || !nikPenerima) {
+    
+    // ====================================================================
+    // PERBAIKAN VALIDASI: Cek kelengkapan & keabsahan panjang 16 digit NIK
+    // ====================================================================
+    const modalErrors = {};
+    if (!nilaiPertanggungan) modalErrors.nilaiPertanggungan = 'Nilai pertanggungan wajib dipilih';
+    if (!namaPenerima.trim()) modalErrors.namaPenerima = 'Nama lengkap penerima wajib diisi';
+    
+    const cleanNik = nikPenerima.replace(/\s/g, '');
+    if (!cleanNik) {
+      modalErrors.nikPenerima = 'NIK Penerima wajib diisi';
+    } else if (cleanNik.length !== 16) {
+      modalErrors.nikPenerima = `NIK harus tepat 16 digit (Saat ini: ${cleanNik.length} digit)`;
+    }
+
+    // Jika ada input tidak valid, cegah pindah halaman & nyalakan border merah
+    if (Object.keys(modalErrors).length > 0) {
+      setErrors(modalErrors);
       setErrorPopup({ show: true, message: 'Terdapat data yang belum diisi atau tidak valid. Silahkan periksa kembali!' });
       setTimeout(() => setErrorPopup({ show: false, message: '' }), 3000);
       return;
@@ -149,7 +166,7 @@ export default function ProdukAsuransi() {
         productName: selectedProduct.name,
         transactionId: transactionId,
         namaPenerima: namaPenerima,
-        nikPenerima: nikPenerima
+        nikPenerima: cleanNik
       }
     });
 
@@ -225,20 +242,66 @@ export default function ProdukAsuransi() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-5 space-y-4">
               <div className="bg-blue-50 p-3 rounded-lg text-sm text-sky-950">Pastikan data yang Anda masukkan benar. Polis akan aktif setelah pembayaran pertama dikonfirmasi.</div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Jenis Polis</label><input type="text" value={selectedProduct.name} disabled className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-600" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Nilai Pertanggungan (Rp)</label><select name="nilaiPertanggungan" value={formData.nilaiPertanggungan} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2">
-                <option value="">Pilih nilai pertanggungan</option>
-                {pertanggunganOptions[selectedProduct.name] 
-                    ? pertanggunganOptions[selectedProduct.name].map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)
-                    : <>
-                        <option value="50000000">Rp 50.000.000</option>
-                        <option value="100000000">Rp 100.000.000</option>
-                        <option value="250000000">Rp 250.000.000</option>
-                      </>
-                }
-              </select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Nama Penerima</label><input type="text" name="namaPenerima" value={formData.namaPenerima} onChange={handleFormChange} placeholder="Nama lengkap sesuai KTP" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">NIK Penerima</label><input type="text" name="nikPenerima" value={formData.nikPenerima} onChange={handleFormChange} placeholder="16 digit NIK" className="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Polis</label>
+                <input type="text" value={selectedProduct.name} disabled className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-600 font-medium" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nilai Pertanggungan (Rp)</label>
+                <select name="nilaiPertanggungan" value={formData.nilaiPertanggungan} onChange={handleFormChange} 
+                  className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ${errors.nilaiPertanggungan ? 'border-red-500 bg-red-50/30 focus:ring-red-200' : 'border-gray-300 focus:ring-sky-500'}`}>
+                  <option value="">Pilih nilai pertanggungan</option>
+                  {pertanggunganOptions[selectedProduct.name] 
+                      ? pertanggunganOptions[selectedProduct.name].map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)
+                      : <>
+                          <option value="50000000">Rp 50.000.000</option>
+                          <option value="100000000">Rp 100.000.000</option>
+                          <option value="250000000">Rp 250.000.000</option>
+                        </>
+                  }
+                </select>
+                {errors.nilaiPertanggungan && <p className="text-red-500 text-xs mt-1 font-medium">⚠️ {errors.nilaiPertanggungan}</p>}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Penerima</label>
+                <input type="text" name="namaPenerima" value={formData.namaPenerima} onChange={handleFormChange} placeholder="Nama lengkap sesuai KTP" 
+                  className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ${errors.namaPenerima ? 'border-red-500 bg-red-50/30 focus:ring-red-200' : 'border-gray-300 focus:ring-sky-500'}`} />
+                {errors.namaPenerima && <p className="text-red-500 text-xs mt-1 font-medium">⚠️ {errors.namaPenerima}</p>}
+              </div>
+              
+              {/* FIELD UPDATE: Border merah dinamis, pencegahan selain angka, dan pembatasan maxLength */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">NIK Penerima</label>
+                <input 
+                  type="text" 
+                  name="nikPenerima" 
+                  maxLength={16} // Kunci input maksimal di angka 16
+                  value={formData.nikPenerima} 
+                  onChange={(e) => {
+                    // Paksa membuang input apabila isinya selain angka (0-9)
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setFormData(prev => ({ ...prev, nikPenerima: value }));
+                    if (errors.nikPenerima) {
+                      setErrors(prev => ({ ...prev, nikPenerima: '' }));
+                    }
+                  }} 
+                  placeholder="16 digit NIK" 
+                  className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition-all ${
+                    errors.nikPenerima 
+                      ? 'border-red-500 bg-red-50/40 text-red-900 placeholder-red-300 focus:ring-red-200 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-sky-500 focus:border-sky-500 text-gray-800'
+                  }`} 
+                />
+                {errors.nikPenerima && (
+                  <p className="text-red-600 text-xs mt-1.5 font-semibold flex items-center gap-1">
+                    ⚠️ {errors.nikPenerima}
+                  </p>
+                )}
+              </div>
+              
               <div className="bg-blue-50 p-3 rounded-lg space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold text-gray-700">Premi Bulanan:</span>
@@ -247,8 +310,8 @@ export default function ProdukAsuransi() {
                 <p className="text-xs text-gray-500">Premi dihitung berdasarkan jenis polis dan nilai pertanggungan</p>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowModal(false)} className="flex-1 border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg">Batal</button>
-                <button onClick={handleBeliPolis} className="flex-1 bg-sky-950 hover:bg-gray-500 text-white font-semibold py-2 rounded-lg">Beli Polis Baru</button>
+                <button onClick={() => setShowModal(false)} className="flex-1 border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                <button onClick={handleBeliPolis} className="flex-1 bg-sky-950 hover:bg-sky-900 text-white font-semibold py-2 rounded-lg transition-colors">Beli Polis Baru</button>
               </div>
             </div>
           </div>

@@ -5,7 +5,6 @@ import { api } from '../lib/api';
 
 export default function PolisSaya() {
   const navigate = useNavigate();
-  const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [polisList, setPolisList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +25,6 @@ export default function PolisSaya() {
         const token = localStorage.getItem('token');
         const response = await api('/polis/saya', 'GET', null, token);
         
-        // PERBAIKAN UTAMA: Bongkar data bertumpuk response.data.data dari Axios + Laravel JSON wrapper
         let polisArray = [];
         if (response && response.data) {
           polisArray = Array.isArray(response.data) ? response.data : (response.data.data || []);
@@ -75,15 +73,9 @@ export default function PolisSaya() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+      {/* Header - PERBAIKAN: Ikon FaSearch di Pojok Kanan Sudah Dihapus Bersih */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Polis Saya</h1>
-        <button
-          onClick={() => setShowSearch(!showSearch)}
-          className="text-gray-500 hover:text-blue-600 transition"
-        >
-          <FaSearch size={22} />
-        </button>
       </div>
 
       {/* Total polis */}
@@ -93,20 +85,17 @@ export default function PolisSaya() {
         </span>
       </div>
 
-      {/* Input pencarian */}
-      {showSearch && (
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Cari polis (nama atau nomor polis)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            autoFocus
-          />
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-        </div>
-      )}
+      {/* Input pencarian - PERBAIKAN: Box Selalu Tampil Menetap */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Cari polis (nama atau nomor polis)..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800"
+        />
+        <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+      </div>
 
       {/* Daftar Polis */}
       <div className="space-y-4">
@@ -157,10 +146,7 @@ export default function PolisSaya() {
 
         {filteredPolis.length === 0 && (
           <div className="text-center py-12 bg-white rounded-xl shadow border border-gray-100">
-            <p className="text-gray-500 font-medium">Belum ada polis. Silakan beli produk terlebih dahulu.</p>
-            <Link to="/produk" className="text-sky-600 hover:underline mt-2 inline-block font-semibold text-sm">
-              Beli produk sekarang →
-            </Link>
+            <p className="text-gray-500 font-medium">Polis yang Anda cari tidak ditemukan.</p>
           </div>
         )}
       </div>

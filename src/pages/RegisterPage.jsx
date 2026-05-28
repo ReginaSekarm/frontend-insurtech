@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaUserCircle, FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaUpload, FaUserCircle, FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash, FaTrash, FaExternalLinkAlt } from 'react-icons/fa';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -17,33 +17,37 @@ export default function RegisterPage() {
 
   const [ktpFile, setKtpFile] = useState(null);
   const [kkFile, setKkFile] = useState(null);
+  
+  const [ktpPreview, setKtpPreview] = useState(null);
+  const [kkPreview, setKkPreview] = useState(null);
+
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Popup email sudah terdaftar
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [emailPopupMsg, setEmailPopupMsg] = useState('');
-
-  // Popup syarat & ketentuan
   const [showTermsPopup, setShowTermsPopup] = useState(false);
 
-  // State untuk toggle password
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // State untuk popup registrasi berhasil
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
-  const registeredEmails = ['nasabah@insurtech.com', 'admin@insurtech.com']; // fallback lokal (bisa dihapus jika hanya pakai API)
+  const registeredEmails = ['nasabah@insurtech.com', 'admin@insurtech.com']; 
 
-  // Validasi password 
+  // ====================================================================
+  // LOGIC BATAS TANGGAL: Mengunci tahun ini (Mentok di 31 Desember tahun lalu)
+  // ====================================================================
+  const getMaxDateString = () => {
+    const lastYear = new Date().getFullYear() - 1; // Mendapatkan tahun lalu (2025)
+    return `${lastYear}-12-31`; // Menghasilkan batas format "2025-12-31"
+  };
+
   const password = formData.password;
   const hasMinLength = password.length >= 8;
   const hasUpperCase = /[A-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
-  // Helper untuk validasi nomor telepon (hanya angka, panjang 11-13)
   const getPhoneDigits = (phone) => phone.replace(/\D/g, '');
   const isPhoneValid = () => {
     const digits = getPhoneDigits(formData.noTelepon);
@@ -57,14 +61,71 @@ export default function RegisterPage() {
     }
   };
 
+  const handleKtpChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file maksimal 5MB');
+        e.target.value = '';
+        return;
+      }
+      setKtpFile(file);
+      setKtpPreview(URL.createObjectURL(file)); 
+    }
+  };
+
+  const handleKkChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file maksimal 5MB');
+        e.target.value = '';
+        return;
+      }
+      setKkFile(file);
+      setKkPreview(URL.createObjectURL(file)); 
+    }
+  };
+
+  const handleRemoveKtp = () => {
+    if (ktpPreview) URL.revokeObjectURL(ktpPreview); 
+    setKtpFile(null);
+    setKtpPreview(null);
+  };
+
+  const handleRemoveKk = () => {
+    if (kkPreview) URL.revokeObjectURL(kkPreview); 
+    setKkFile(null);
+    setKkPreview(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (ktpPreview) URL.revokeObjectURL(ktpPreview);
+      if (kkPreview) URL.revokeObjectURL(kkPreview);
+    };
+  }, [ktpPreview, kkPreview]);
+
   const validateForm = () => {
     const newErrors = {};
     if (!formData.namaLengkap.trim()) newErrors.namaLengkap = 'Nama lengkap harus diisi';
     if (!formData.email.trim()) newErrors.email = 'Email harus diisi';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Format email tidak valid';
+    
     if (!formData.noTelepon.trim()) newErrors.noTelepon = 'No telepon harus diisi';
     else if (!/^[0-9]{10,13}$/.test(formData.noTelepon.replace(/\s/g, ''))) newErrors.noTelepon = 'No telepon harus 10-13 digit angka';
-    if (!formData.tanggalLahir) newErrors.tanggalLahir = 'Tanggal lahir harus diisi';
+    
+    // PERBAIKAN VALIDASI TANGGAL: Mencegah bypass pengetikan manual tahun ini & masa depan
+    if (!formData.tanggalLahir) {
+      newErrors.tanggalLahir = 'Tanggal lahir harus diisi';
+    } else {
+      const selectedYear = new Date(formData.tanggalLahir).getFullYear();
+      const currentYear = new Date().getFullYear(); // Tahun 2026
+      if (selectedYear >= currentYear) {
+        newErrors.tanggalLahir = 'Tahun lahir tidak boleh tahun ini atau tahun depan';
+      }
+    }
+
     if (!formData.alamat.trim()) newErrors.alamat = 'Alamat harus diisi';
     if (!formData.password) newErrors.password = 'Password harus diisi';
     else if (formData.password.length < 6) newErrors.password = 'Password minimal 6 karakter';
@@ -81,7 +142,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Cek email sudah terdaftar secara lokal
     if (registeredEmails.includes(formData.email.toLowerCase())) {
       setEmailPopupMsg(`Email ${formData.email} sudah digunakan. Silakan gunakan email lain atau masuk ke akun Anda.`);
       setShowEmailPopup(true);
@@ -98,20 +158,14 @@ export default function RegisterPage() {
       return;
     }
 
-    // Kirim data ke backend
     try {
       const formDataToSend = new FormData();
-      
-      // PERUBAHAN ADA DI SINI:
-      // Key disamakan 100% dengan $request->validate() di AuthController.php
       formDataToSend.append('Nama_Lengkap', formData.namaLengkap);
       formDataToSend.append('Email', formData.email);
       formDataToSend.append('Password', formData.password);
       formDataToSend.append('No_Telepon', formData.noTelepon);
       formDataToSend.append('Tanggal_Lahir', formData.tanggalLahir);
       formDataToSend.append('Alamat_Lengkap', formData.alamat);
-      
-      // Mengirim file tetap dilampirkan meskipun backend saat ini belum memprosesnya
       formDataToSend.append('ktp', ktpFile);
       formDataToSend.append('kk', kkFile);
 
@@ -131,7 +185,6 @@ export default function RegisterPage() {
           setShowEmailPopup(true);
           setTimeout(() => setShowEmailPopup(false), 3000);
         } else {
-          // Menampilkan error validasi Laravel dengan lebih rapi 
           const errorMsg = data.errors 
             ? Object.values(data.errors).flat().join(', ') 
             : data.message;
@@ -140,14 +193,13 @@ export default function RegisterPage() {
         return;
       }
 
-      // Registrasi sukses
       if (data.token) localStorage.setItem('token', data.token);
       if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
 
       setShowSuccessPopup(true);
       setTimeout(() => {
         setShowSuccessPopup(false);
-        navigate('/login'); // Diubah ke login agar flow-nya aman
+        navigate('/login'); 
       }, 2000);
     } catch (error) {
       console.error('Error registrasi:', error);
@@ -207,7 +259,6 @@ export default function RegisterPage() {
                 maxLength="13"
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
               />
-              {/* Indikator syarat panjang digit */}
               {formData.noTelepon && (
                 <div className="mt-1 flex items-center gap-2 text-xs">
                   {isPhoneValid() ? (
@@ -215,21 +266,22 @@ export default function RegisterPage() {
                   ) : null}
                 </div>
               )}
-              {/* Pesan error jika kurang dari 11 digit */}
               {formData.noTelepon && getPhoneDigits(formData.noTelepon).length > 0 && getPhoneDigits(formData.noTelepon).length < 11 && (
                 <p className="text-red-500 text-xs mt-1">Format no telepon minimal 11 digit</p>
               )}
               {errors.noTelepon && <p className="text-red-500 text-xs mt-1">{errors.noTelepon}</p>}
             </div>
 
+            {/* FIELD UPDATE: Kunci total pilihan kalender pada tahun ini */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
               <input
                 type="date"
                 name="tanggalLahir"
+                max={getMaxDateString()} // Kalender mentok di 31 Desember 2025
                 value={formData.tanggalLahir}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-gray-800"
               />
               {errors.tanggalLahir && <p className="text-red-500 text-xs mt-1">{errors.tanggalLahir}</p>}
             </div>
@@ -247,7 +299,6 @@ export default function RegisterPage() {
               {errors.alamat && <p className="text-red-500 text-xs mt-1">{errors.alamat}</p>}
             </div>
 
-            {/* Password dengan icon mata dan syarat */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Password</label>
               <div className="relative">
@@ -268,7 +319,6 @@ export default function RegisterPage() {
                 </button>
               </div>
               {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
-              {/* Syarat Password */}
               <div className="mt-2 bg-gray-50 p-3 rounded-lg space-y-1">
                 <p className="text-xs font-semibold text-gray-600">Syarat Password</p>
                 <ul className="text-xs space-y-1 text-gray-600">
@@ -292,7 +342,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Konfirmasi Password dengan icon mata */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
               <div className="relative">
@@ -318,45 +367,75 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Dokumen Pendukung */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Dokumen Pendukung</label>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 font-bold">KTP</span>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file && file.size > 5 * 1024 * 1024) alert('Ukuran file maksimal 5MB');
-                      else setKtpFile(file);
-                    }}
-                    className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
+              <div className="flex flex-col gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <div className="flex flex-col gap-1 pb-2 border-b border-gray-200">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-gray-500 font-bold w-12">KTP</span>
+                    {!ktpFile ? (
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        onChange={handleKtpChange}
+                        className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-3 bg-white border px-3 py-1.5 rounded-lg text-sm text-gray-700 shadow-sm flex-1 max-w-full justify-between">
+                        <span className="truncate max-w-[150px] font-medium text-xs">✓ {ktpFile.name}</span>
+                        <div className="flex items-center gap-3">
+                          <a href={ktpPreview} target="_blank" rel="noreferrer" className="text-sky-700 hover:text-sky-900 flex items-center gap-1 text-xs font-semibold">
+                            <FaExternalLinkAlt size={11} /> Buka
+                          </a>
+                          <button type="button" onClick={handleRemoveKtp} className="text-red-500 hover:text-red-700 p-1" title="Batalkan file">
+                            <FaTrash size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {ktpPreview && ktpFile && ktpFile.type.startsWith('image/') && (
+                    <div className="mt-2 ml-14">
+                      <img src={ktpPreview} alt="Pratinjau KTP" className="h-16 w-auto rounded border object-cover shadow-sm bg-white" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 font-bold">KK</span>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file && file.size > 5 * 1024 * 1024) alert('Ukuran file maksimal 5MB');
-                      else setKkFile(file);
-                    }}
-                    className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
+
+                <div className="flex flex-col gap-1 pt-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-gray-500 font-bold w-12">KK</span>
+                    {!kkFile ? (
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        onChange={handleKkChange}
+                        className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-3 bg-white border px-3 py-1.5 rounded-lg text-sm text-gray-700 shadow-sm flex-1 max-w-full justify-between">
+                        <span className="truncate max-w-[150px] font-medium text-xs">✓ {kkFile.name}</span>
+                        <div className="flex items-center gap-3">
+                          <a href={kkPreview} target="_blank" rel="noreferrer" className="text-sky-700 hover:text-sky-900 flex items-center gap-1 text-xs font-semibold">
+                            <FaExternalLinkAlt size={11} /> Buka
+                          </a>
+                          <button type="button" onClick={handleRemoveKk} className="text-red-500 hover:text-red-700 p-1" title="Batalkan file">
+                            <FaTrash size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {kkPreview && kkFile && kkFile.type.startsWith('image/') && (
+                    <div className="mt-2 ml-14">
+                      <img src={kkPreview} alt="Pratinjau KK" className="h-16 w-auto rounded border object-cover shadow-sm bg-white" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-3 mt-1">
-                  {ktpFile && <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">✓ KTP: {ktpFile.name}</span>}
-                  {kkFile && <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">✓ KK: {kkFile.name}</span>}
-                </div>
-                <p className="text-xs text-gray-400">Format JPG, PNG, PDF (maks 5MB)</p>
+
+                <p className="text-xs text-gray-400 mt-1">Format JPG, PNG, PDF (maks 5MB)</p>
               </div>
             </div>
 
-            {/* Checkbox dan tombol */}
             <div className="flex items-start">
               <input
                 type="checkbox"
