@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaArrowLeft } from 'react-icons/fa';
+import { FaHome, FaAngleLeft } from 'react-icons/fa';
 
 export default function BayarPremi() {
   const location = useLocation();
@@ -28,7 +28,8 @@ export default function BayarPremi() {
   }
 
   const diskon = 0;
-  const totalBayar = (premi || 0) - diskon;
+  // Format totalBayar menjadi 500.000 (tanpa desimal)
+  const totalBayar = (premi || 500000) - diskon;
 
   const handleBayarNow = async () => {
     if (!jenis || !noPolis) {
@@ -90,7 +91,7 @@ export default function BayarPremi() {
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div className="p-4 border-b flex items-center gap-3">
           <button onClick={handleBackToPolisSaya} className="text-gray-600 hover:text-gray-900 transition p-1">
-            <FaArrowLeft size={18} />
+            <FaAngleLeft size={20} />
           </button>
           <h1 className="text-xl font-bold text-gray-800">Bayar Premi</h1>
         </div>
@@ -107,7 +108,7 @@ export default function BayarPremi() {
           <div className="text-center">
             <p className="text-gray-500 text-sm">Total premi yang harus dibayar bulan ini</p>
             <p className="text-3xl font-extrabold text-sky-900">
-              Rp {(premi || 0).toLocaleString('id-ID')}
+              Rp {(totalBayar).toLocaleString('id-ID')}
             </p>
           </div>
 
@@ -124,7 +125,7 @@ export default function BayarPremi() {
           <div className="bg-gray-50 p-4 rounded-lg space-y-3">
             <h3 className="font-semibold text-gray-700 text-sm">RINGKASAN PEMBAYARAN</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-600">Premi</span><span>Rp {(premi || 0).toLocaleString('id-ID')}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Premi</span><span>Rp {(totalBayar).toLocaleString('id-ID')}</span></div>
               <div className="flex justify-between"><span className="text-gray-600">Diskon</span><span>-Rp {diskon.toLocaleString('id-ID')}</span></div>
               <div className="flex justify-between pt-2 border-t font-semibold"><span>Total bayar</span><span className="font-bold text-sky-900">Rp {totalBayar.toLocaleString('id-ID')}</span></div>
             </div>

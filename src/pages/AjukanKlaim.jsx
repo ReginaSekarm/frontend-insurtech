@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { FaPaperPlane, FaTrash, FaExternalLinkAlt } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+// PERUBAHAN: Menambahkan useLocation di import
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function AjukanKlaim() {
   const navigate = useNavigate();
+  const location = useLocation(); // PERUBAHAN: Deklarasi location
   const [userPolisList, setUserPolisList] = useState([]);
+  
+  // PERUBAHAN: Memasukkan data bawaan (state) dari halaman Polis Saya
   const [formData, setFormData] = useState({
-    polisId: '',
-    polisJenis: '',
+    polisId: location.state?.polisId || '',
+    polisJenis: location.state?.polisJenis || '',
     jenisKlaim: '',
     jumlah: '',
     tanggalKejadian: '',
@@ -16,14 +20,12 @@ export default function AjukanKlaim() {
   });
   const [fileName, setFileName] = useState('');
   
-  // State Baru: Menyimpan URL sementara pratinjau dokumen di browser
   const [documentPreview, setDocumentPreview] = useState(null);
   
   const [statusDraft, setStatusDraft] = useState('Draft Tersimpan');
   const [showPopup, setShowPopup] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Ambil daftar polis dari backend
   useEffect(() => {
     const fetchPolis = async () => {
       try {
@@ -78,7 +80,6 @@ export default function AjukanKlaim() {
     setStatusDraft('Draft Tersimpan');
   };
 
-  // PERBAIKAN UTAMA: Manajemen pembacaan input text, select option, dan file multipart dokumen
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     
@@ -87,13 +88,12 @@ export default function AjukanKlaim() {
         const file = files[0];
         if (file.size > 5 * 1024 * 1024) {
           alert('Ukuran file maksimal 5MB');
-          e.target.value = ''; // reset elemen html
+          e.target.value = ''; 
           return;
         }
         setFormData(prev => ({ ...prev, dokumen: file }));
         setFileName(file.name);
         
-        // Hapus pratinjau memori lama jika ada pergantian berkas baru
         if (documentPreview) URL.revokeObjectURL(documentPreview);
         setDocumentPreview(URL.createObjectURL(file));
         setStatusDraft('Draft Tersimpan');
@@ -106,7 +106,6 @@ export default function AjukanKlaim() {
     }
   };
 
-  // Fungsi membatalkan unggahan dokumen klaim sebelum dikirim
   const handleRemoveDokumen = () => {
     if (documentPreview) URL.revokeObjectURL(documentPreview); 
     setFormData(prev => ({ ...prev, dokumen: null }));
@@ -115,7 +114,6 @@ export default function AjukanKlaim() {
     setStatusDraft('Draft Tersimpan');
   };
 
-  // Bersihkan URL Object saat komponen ditutup agar tidak bocor memorinya
   useEffect(() => {
     return () => {
       if (documentPreview) URL.revokeObjectURL(documentPreview);
@@ -134,7 +132,6 @@ export default function AjukanKlaim() {
       const token = localStorage.getItem('token');
       const formDataToSend = new FormData();
       
-      // Mengirimkan muatan data yang sinkron dengan request->validate() Laravel Anda
       formDataToSend.append('ID_Polis', formData.polisId);
       formDataToSend.append('Jenis_Klaim', formData.jenisKlaim);
       formDataToSend.append('Jumlah_Klaim', formData.jumlah);
@@ -148,7 +145,7 @@ export default function AjukanKlaim() {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json' // Memaksa laravel merespons JSON jika validasi gagal
+          'Accept': 'application/json' 
         },
         body: formDataToSend
       });
@@ -156,7 +153,6 @@ export default function AjukanKlaim() {
       const result = await response.json();
       
       if (!response.ok) {
-        // Ekstrak pesan kesalahan validasi Laravel jika ada
         const errorMsg = result.errors 
           ? Object.values(result.errors).flat().join(', ') 
           : result.message;
@@ -180,7 +176,7 @@ export default function AjukanKlaim() {
   };
 
   const availableClaims = formData.polisId ? getAvailableClaimsByJenis(
-    userPolisList.find(p => p.id.toString() === formData.polisId.toString())?.jenis || ''
+    userPolisList.find(p => p.id.toString() === formData.polisId.toString())?.jenis || formData.polisJenis || ''
   ) : [];
 
   return (
@@ -193,7 +189,6 @@ export default function AjukanKlaim() {
 
         <form onSubmit={handleSubmit}>
           <div className="p-6 md:p-8 space-y-5">
-            {/* Pilih Polis */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Pilih Polis</label>
               <select
@@ -215,7 +210,6 @@ export default function AjukanKlaim() {
               )}
             </div>
 
-            {/* Jenis Klaim */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Jenis Klaim</label>
               <select
@@ -236,7 +230,6 @@ export default function AjukanKlaim() {
               )}
             </div>
 
-            {/* Jumlah & Tanggal Kejadian */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Jumlah (Rp)</label>
@@ -263,7 +256,6 @@ export default function AjukanKlaim() {
               </div>
             </div>
 
-            {/* Deskripsi Kejadian */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Deskripsi Kejadian</label>
               <textarea
@@ -277,7 +269,6 @@ export default function AjukanKlaim() {
               />
             </div>
 
-            {/* Dokumen Pendukung dengan Fitur Cek & Hapus */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Dokumen Pendukung (Opsional)</label>
               <div className="flex flex-col gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -315,7 +306,6 @@ export default function AjukanKlaim() {
                   )}
                 </div>
 
-                {/* Pratinjau Gambar Thumbnail Instan jika berkas bertipe Citra/Gambar */}
                 {documentPreview && formData.dokumen && formData.dokumen.type.startsWith('image/') && (
                   <div className="mt-1">
                     <img 
@@ -330,7 +320,6 @@ export default function AjukanKlaim() {
             </div>
           </div>
 
-          {/* Footer Bar */}
           <div className="border-t border-gray-100 px-6 py-5 bg-gray-50">
             <div className="flex justify-between items-center mb-4">
               <div>
@@ -354,7 +343,6 @@ export default function AjukanKlaim() {
         </form>
       </div>
 
-      {/* Popup sukses */}
       {showPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center animate-fade-in">

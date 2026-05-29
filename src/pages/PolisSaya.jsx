@@ -73,19 +73,16 @@ export default function PolisSaya() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header - PERBAIKAN: Ikon FaSearch di Pojok Kanan Sudah Dihapus Bersih */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Polis Saya</h1>
       </div>
 
-      {/* Total polis */}
       <div>
         <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-semibold">
           Polis Saya ({polisList.length})
         </span>
       </div>
 
-      {/* Input pencarian - PERBAIKAN: Box Selalu Tampil Menetap */}
       <div className="relative">
         <input
           type="text"
@@ -97,11 +94,9 @@ export default function PolisSaya() {
         <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
       </div>
 
-      {/* Daftar Polis */}
       <div className="space-y-4">
         {filteredPolis.map((polis) => (
           <div key={polis.id || polis.noPolis} className="space-y-2">
-            {/* Card Informasi Polis */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 flex items-start gap-4">
               <div className="text-3xl mt-1">{polis.icon}</div>
               <div className="flex-1">
@@ -116,12 +111,12 @@ export default function PolisSaya() {
               </div>
             </div>
 
-            {/* Tombol Aksi */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3">
               <div className="flex flex-col sm:flex-row gap-3">
+                {/* PERUBAHAN: Komentar dipindahkan ke SINI, di atas tag Link */}
                 <Link
                   to="/ajukan-klaim"
-                  state={{ polisId: polis.noPolis, polisJenis: polis.jenis }}
+                  state={{ polisId: polis.id, polisJenis: polis.jenis }}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-sky-900 font-semibold rounded-lg hover:bg-sky-950 hover:text-white transition text-sm"
                 >
                   + Ajukan Klaim

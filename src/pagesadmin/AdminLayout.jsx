@@ -48,6 +48,13 @@ export default function AdminLayout() {
 
   const hideSearch = location.pathname === '/admin-review-klaim' || location.pathname === '/admin-tambah-produk' || location.pathname === '/admin-pengguna' || location.pathname === '/admin-verifikasi-dokumen';
   
+  // FUNGSI LOGOUT GABUNGAN DARI ADMINSIDEBAR
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
   return (
     <div className="flex h-screen bg-amber-50 overflow-hidden">
       {/* Sidebar */}
@@ -89,7 +96,7 @@ export default function AdminLayout() {
 
         <div className="px-3 py-4 border-t border-white/10">
           <button
-            onClick={() => navigate('/login')}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/60 hover:bg-white/10 hover:text-white transition"
           >
             <div className="bg-white/20 p-1.5 rounded-lg flex-shrink-0">

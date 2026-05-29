@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaPaperPlane, FaCar, FaHome, FaHeartbeat, FaGraduationCap } from 'react-icons/fa';
+import { FaAngleLeft,FaPaperPlane,FaCar, FaHome, FaHeartbeat, FaGraduationCap } from 'react-icons/fa';
 
 const formatRupiah = (nominal) =>
   new Intl.NumberFormat('id-ID', {
@@ -115,14 +115,15 @@ export default function RincianKelompokTransaksi() {
   else groupIcon = <FaHeartbeat className="text-white text-2xl" />;
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] py-6 px-4">
+    <div className="min-h-screen py-6 px-4 relative">
       <div className="max-w-4xl mx-auto space-y-4">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sky-900 font-semibold mb-4 hover:underline">
-          <FaArrowLeft size={16} /> Kembali
-        </button>
-
+        
         {/* Banner Gradasi */}
         <div className="bg-gradient-to-r from-sky-950 to-sky-900 rounded-2xl p-6 text-white shadow-md">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white/80 hover:text-white font-semibold mb-6 hover:underline transition-colors w-fit">
+            <FaAngleLeft size={16} /> 
+          </button>
+
           <div className="flex items-center gap-4 mb-6">
             <div className="bg-white/15 p-3 rounded-xl backdrop-blur-sm">{groupIcon}</div>
             <div>
@@ -137,7 +138,7 @@ export default function RincianKelompokTransaksi() {
             </div>
             <div className="text-right">
               <p className="text-white/50 text-xs uppercase tracking-wider font-semibold">Jumlah Pembayaran</p>
-              <p className="text-2xl font-extrabold text-sky-300 mt-0.5">{jumlahPembayaran}x Bayar</p>
+              <p className="text-2xl font-extrabold text-yellow-500 mt-0.5">{jumlahPembayaran}x Bayar</p>
             </div>
           </div>
         </div>
@@ -182,12 +183,16 @@ export default function RincianKelompokTransaksi() {
                   <div>
                     <p className="font-bold text-gray-800 text-sm">{trx.tanggal}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{trx.waktu || '10:00 WIB'}</p>
+                    {/* PERUBAHAN: Label Lunas dipindah ke sini */}
+                    <div className="mt-1.5">
+                      <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-800 uppercase tracking-wide">
+                        Lunas
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right flex items-center gap-3">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-green-100 text-green-800 uppercase tracking-wide">
-                    Lunas
-                  </span>
+                {/* PERUBAHAN: Sisi kanan sekarang hanya menampilkan nominal */}
+                <div className="text-right">
                   <p className="font-extrabold text-gray-900">{formatRupiah(trx.nominal)}</p>
                 </div>
               </div>

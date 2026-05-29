@@ -47,12 +47,38 @@ export default function AdminProduk() {
             ? `Rp ${rawPremi.toLocaleString('id-ID')}` 
             : rawPremi;
 
+          // PERBAIKAN: Ambil nilai Maksimal Klaim dengan benar
+          // Coba ambil dari berbagai kemungkinan nama field
+          let maksValue = '-';
+          const maksKlaim = p.Maksimal_Klaim || p.maksimal_klaim || p.maks_klaim || p.maks;
+          
+          if (maksKlaim && maksKlaim !== null && maksKlaim !== '') {
+            // Jika berupa angka, format dengan pemisah ribuan
+            if (typeof maksKlaim === 'number') {
+              maksValue = `Rp ${maksKlaim.toLocaleString('id-ID')}`;
+            } 
+            // Jika sudah berupa string dengan nilai valid
+            else if (typeof maksKlaim === 'string' && maksKlaim !== '-' && maksKlaim !== '') {
+              // Coba parse jika string angka
+              const parsed = parseInt(maksKlaim);
+              if (!isNaN(parsed)) {
+                maksValue = `Rp ${parsed.toLocaleString('id-ID')}`;
+              } else {
+                maksValue = maksKlaim;
+              }
+            }
+            // Jika berupa objek atau lainnya
+            else if (maksKlaim && typeof maksKlaim === 'object') {
+              maksValue = JSON.stringify(maksKlaim);
+            }
+          }
+
           return {
             id: p.ID_Produk || p.id,
             nama: p.Nama_Produk || p.nama || 'Produk Tanpa Nama',
             kategori: p.Kategori_Produk || p.kategori || 'Umum',
             premi: formattedPremi,
-            maks: p.Maksimal_Klaim || p.maks || '-',
+            maks: maksValue,
             status: normalizedStatus, 
             icon: getIconByKategori(p.Kategori_Produk || p.kategori)
           };
@@ -218,7 +244,7 @@ export default function AdminProduk() {
                 ))
               )}
             </tbody>
-          </table>
+           </table>
         </div>
         <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center">
           <p className="text-xs text-gray-500">Halaman {currentPage} dari {totalPages || 1}</p>

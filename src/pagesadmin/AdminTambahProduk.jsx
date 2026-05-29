@@ -83,7 +83,12 @@ export default function AdminTambahProduk() {
 
       // Sesuai model di backend Anda, jika ada field tambahan silakan disesuaikan
       if (formData.kategori) submitData.append('Kategori_Produk', formData.kategori);
-      if (formData.maksKlaim) submitData.append('Maksimal_Klaim', parseInt(formData.maksKlaim || 0));
+      
+      // PERBAIKAN: Pastikan Maksimal_Klaim terkirim dengan benar
+      const maksKlaimValue = parseInt(formData.maksKlaim || 0);
+      console.log('Maksimal Klaim yang dikirim:', maksKlaimValue); // LOGGING
+      submitData.append('Maksimal_Klaim', maksKlaimValue);
+      
       if (formData.masaTunggu) submitData.append('Masa_Tunggu', parseInt(formData.masaTunggu || 0));
       
       if (pdfFile) {
@@ -99,6 +104,12 @@ export default function AdminTambahProduk() {
         ? `${baseUrl}/api/admin/produk/${product.id || product.ID_Produk}`
         : `${baseUrl}/api/admin/produk`;
 
+      // LOGGING: Tampilkan data yang akan dikirim
+      console.log('Data yang dikirim:');
+      for (let pair of submitData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+      }
+
       const response = await fetch(url, {
         method: 'POST', 
         headers: {
@@ -108,9 +119,11 @@ export default function AdminTambahProduk() {
         body: submitData
       });
 
+      const responseData = await response.json();
+      console.log('Response dari server:', responseData); // LOGGING
+
       if (!response.ok) {
-         const err = await response.json();
-         throw new Error(err.message || 'Gagal menyimpan produk');
+         throw new Error(responseData.message || 'Gagal menyimpan produk');
       }
       
       alert(`Produk berhasil ${type === 'publish' ? 'dipublikasikan' : 'disimpan sebagai draft'}`);

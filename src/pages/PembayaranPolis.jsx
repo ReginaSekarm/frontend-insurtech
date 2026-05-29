@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { FaDownload, FaArrowLeft } from 'react-icons/fa6';
+import { FaDownload, FaAngleLeft} from 'react-icons/fa';
 
 export default function PembayaranPolis() {
   const location = useLocation();
@@ -11,9 +11,8 @@ export default function PembayaranPolis() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [paymentStatus, setPaymentStatus] = useState('pending'); // pending, success, failed
-  const [countdown, setCountdown] = useState(0); // hitung mundur untuk polling (opsional)
-  const [showPopup, setShowPopup] = useState(false); // STATE UNTUK POPUP QR CODE TERSIMPAN
+  const [paymentStatus, setPaymentStatus] = useState('pending'); // pending, success, failed, expired
+  const [countdown, setCountdown] = useState(0); // hitung mundur 24 Jam
 
   const pollingRef = useRef(null);
   const countdownRef = useRef(null);
@@ -54,23 +53,22 @@ export default function PembayaranPolis() {
     }
   };
 
-  // Mulai polling dan hitung mundur (opsional, misal timeout 20 menit)
+  // LOGIKA WAKTU
   const startPolling = (id) => {
     // Hentikan yang lama jika ada
     stopPolling();
 
-    // Set timeout 20 menit (1200 detik)
-    let timeLeft = 1200;
+    // Set timeout 1 x 24 Jam dalam detik (24 jam * 60 menit * 60 detik)
+    let timeLeft = 24 * 60 * 60; 
     setCountdown(timeLeft);
 
     countdownRef.current = setInterval(() => {
       timeLeft -= 1;
       setCountdown(timeLeft);
       if (timeLeft <= 0) {
-        // Waktu habis, hentikan polling dan tampilkan pesan expired
         stopPolling();
         setPaymentStatus('expired');
-        setError('Waktu pembayaran habis. Silakan lakukan pemesanan ulang.');
+        // HAPUS setError di sini
       }
     }, 1000);
 
@@ -88,7 +86,7 @@ export default function PembayaranPolis() {
       } else if (status === 'failed' || status === 'expired') {
         setPaymentStatus('failed');
         stopPolling();
-        setError('Pembayaran gagal atau kadaluwarsa. Silakan hubungi customer service.');
+        // HAPUS setError di sini
       }
     }, 5000);
   };
@@ -138,8 +136,10 @@ export default function PembayaranPolis() {
         } else if (initialStatus === 'pending') {
           // Mulai polling
           startPolling(transactionId);
+        } else if (initialStatus === 'failed' || initialStatus === 'expired') {
+          // JANGAN setError, biarkan halaman tetap tampil
+          // Tidak melakukan apa-apa, hanya menampilkan status failed/expired
         } else {
-          // Status failed/expired, tampilkan error
           setError('Transaksi tidak valid atau sudah kadaluwarsa.');
         }
       } catch (err) {
@@ -158,18 +158,38 @@ export default function PembayaranPolis() {
     };
   }, [transactionId, location.state, navigate]);
 
-  // Handler simpan QR (dengan popup)
+  // PERUBAHAN UNDUH QR: Logika untuk mendownload QR ke Device
   const handleSimpanQR = () => {
-    // TAMPILKAN POPUP
-    setShowPopup(true);
+    // Cegah download QR jika status gagal/expired
+    if (paymentStatus === 'failed' || paymentStatus === 'expired') {
+      return;
+    }
     
-    // HIDE POPUP SETELAH 2 DETIK
-    setTimeout(() => {
-      setShowPopup(false);
-    }, 2000);
-    
-    // Di sini bisa ditambahkan logika download QR jika diperlukan
-    // alert('Kode QR berhasil disimpan (simulasi).');
+    const svgElement = document.getElementById('qr-code-svg');
+    if (svgElement) {
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width + 40;
+        canvas.height = img.height + 40;
+        ctx.fillStyle = "#FFFFFF"; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 20, 20); 
+
+        // Buat file PNG
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = `QR_Pembayaran_${transactionId || 'Polis'}.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+      };
+      
+      // Render SVG ke Base64 Image
+      img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
+    }
   };
 
   const handleKembali = () => {
@@ -182,6 +202,14 @@ export default function PembayaranPolis() {
     navigate('/polis-saya');
   };
 
+  // Fungsi format waktu
+  const formatTime = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')} Jam ${minutes.toString().padStart(2, '0')} Menit ${seconds.toString().padStart(2, '0')} Detik`;
+  };
+
   // Tampilkan loading
   if (loading) {
     return (
@@ -191,8 +219,8 @@ export default function PembayaranPolis() {
     );
   }
 
-  // Tampilkan error jika ada
-  if (error || !data) {
+  // Tampilkan error hanya jika error ada DAN status BUKAN failed/expired
+  if (error && paymentStatus !== 'failed' && paymentStatus !== 'expired') {
     return (
       <div className="min-h-screen py-8 px-4 flex justify-center items-center">
         <div className="bg-white p-6 rounded-xl shadow-md text-center max-w-sm w-full">
@@ -213,7 +241,7 @@ export default function PembayaranPolis() {
         {/* Header */}
         <div className="p-4 border-b flex items-center gap-3">
           <button onClick={handleKembali} className="text-gray-600 hover:text-gray-900 transition p-1">
-            <FaArrowLeft size={18} />
+            <FaAngleLeft size={18} />
           </button>
           <h1 className="text-xl font-bold text-gray-800">Pembayaran Polis</h1>
         </div>
@@ -226,49 +254,61 @@ export default function PembayaranPolis() {
               Rp {Number(total || 0).toLocaleString('id-ID')}
             </p>
             <p className="text-sm font-semibold text-gray-700 mt-2">{productName || 'Produk Asuransi'}</p>
-            </div>
+          </div>
 
-          {/* Status pembayaran */}
+          {/* Status pembayaran - TAMBAHKAN status failed dan expired */}
           <div className="text-center">
             {paymentStatus === 'pending' && (
-              <div className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
-                <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-                Menunggu pembayaran...
-              </div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Menunggu pembayaran...</p>
             )}
             {paymentStatus === 'success' && (
               <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm inline-flex items-center gap-2">
                 <span>✓</span> Pembayaran berhasil! Mengalihkan...
               </div>
             )}
+            {/* TAMBAHKAN status failed */}
             {paymentStatus === 'failed' && (
               <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
                 Pembayaran gagal. Silakan coba lagi.
               </div>
             )}
+            {/* TAMBAHKAN status expired */}
             {paymentStatus === 'expired' && (
-              <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
-                Waktu pembayaran habis.
+              <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold">
+                 Pembayaran Gagal - Waktu Habis
               </div>
             )}
+
+            {/* Tampilan Visual Waktu Mundur Ditampilkan Kembali */}
             {countdown > 0 && paymentStatus === 'pending' && (
-              <p className="text-xs text-gray-500 mt-2">Sisa waktu: {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')} menit</p>
+              <div className="mt-3">
+                <p className="text-xs text-gray-500 mb-1">Batas waktu bayar:</p>
+                <p className="text-sm font-bold text-amber-700 bg-amber-50 inline-block px-3 py-1 rounded-md border border-amber-200 shadow-sm"> {formatTime(countdown)}
+                </p>
+              </div>
             )}
           </div>
 
-          {/* QR Code */}
+          {/* QR Code - UBAH: QR menjadi blur/tidak tersedia saat gagal/expired */}
           <div className="flex flex-col items-center border-y py-4 bg-gray-50 rounded-xl">
-            <QRCodeSVG value={id || 'DUMMY_TX_ID'} size={180} />
+            {(paymentStatus === 'failed' || paymentStatus === 'expired') ? (
+              // QR tidak tersedia
+              <div className="h-[180px] w-[180px] flex items-center justify-center border-2 border-dashed border-red-300 rounded-lg p-4 text-center bg-white">
+                <span className="text-red-500 font-bold">QR Tidak Tersedia</span>
+              </div>
+            ) : (
+              <QRCodeSVG id="qr-code-svg" value={id || 'DUMMY_TX_ID'} size={180} />
+            )}
             <p className="text-xs text-gray-500 mt-3 break-all text-center px-4 font-mono">
               {id || 'ID Transaksi Tidak Valid'}
             </p>
           </div>
 
-          {/* Petunjuk Pembayaran QRIS */}
+          {/* Petunjuk Pembayaran QRIS - TETAP DITAMPILKAN (tidak diubah) */}
           <div className="text-sm space-y-2">
             <h3 className="font-semibold text-gray-700">Petunjuk Pembayaran QRIS</h3>
             <ol className="list-decimal pl-5 space-y-1 text-gray-600 text-xs leading-relaxed">
-              <li>Simpan atau screenshot Kode QR, yang berlaku selama 20 menit. Kamu bisa muat ulang untuk dapatkan kode baru.</li>
+              <li>Simpan atau screenshot Kode QR. Kamu bisa muat ulang untuk dapatkan kode baru.</li>
               <li>Scan Kode QR dengan m-banking, dompet elektronik, atau aplikasi pembayaran lain.</li>
               <li>Pastikan rincian pembayaran telah sesuai, lalu lanjutkan pembayaran.</li>
               <li>Transaksi akan secara otomatis terbayar dan diperbarui setelah pembayaran berhasil.</li>
@@ -277,11 +317,16 @@ export default function PembayaranPolis() {
             </ol>
           </div>
 
-          {/* Tombol Aksi */}
+          {/* Tombol Aksi - TETAP SAMA (tidak diubah) */}
           <div className="space-y-2 pt-2">
             <button
               onClick={handleSimpanQR}
-              className="w-full bg-sky-950 hover:bg-sky-900 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition"
+              disabled={(paymentStatus === 'failed' || paymentStatus === 'expired')}
+              className={`w-full font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition ${
+                (paymentStatus === 'failed' || paymentStatus === 'expired') 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : 'bg-sky-950 hover:bg-sky-900 text-white shadow-md'
+              }`}
             >
               <FaDownload size={14} />
               Simpan Kode QR
@@ -289,27 +334,13 @@ export default function PembayaranPolis() {
 
             <button
               onClick={handleLihatPolis}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition border border-gray-200"
+              className="w-full bg-white hover:bg-gray-50 text-sky-950 font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition border-2 border-gray-200 shadow-sm"
             >
               Lihat Polis Saya
             </button>
           </div>
         </div>
       </div>
-
-      {/* POPUP NOTIFIKASI QR CODE TERSIMPAN */}
-      {showPopup && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-bounce pointer-events-auto">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="font-medium">QR Code berhasil tersimpan!</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

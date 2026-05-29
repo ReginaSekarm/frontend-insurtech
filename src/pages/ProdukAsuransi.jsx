@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaHeartbeat, FaHome, FaCar, FaGraduationCap } from 'react-icons/fa';
+import { FaHeartbeat, FaHome, FaCar, FaGraduationCap, FaFilePdf } from 'react-icons/fa';
 import { api } from '../lib/api'; 
 
 export default function ProdukAsuransi() {
@@ -58,7 +58,9 @@ export default function ProdukAsuransi() {
                   name: prod.name || prod.nama || prod.Nama_Produk || 'Produk Asuransi',
                   price: parseInt(prod.price || prod.premi || prod.Harga_Premi || 0),
                   description: prod.description || prod.deskripsi || prod.Deskripsi_Produk || 'Melindungi masa depan Anda',
-                  badge: prod.badge || null
+                  badge: prod.badge || null,
+                  // TAMBAHKAN: Ambil file S&K dari response API
+                  pdfFile: prod.pdf_file || prod.pdfFile || prod.file_path || prod.syarat_dan_ketentuan || null,
                 });
               }
             });
@@ -90,7 +92,7 @@ export default function ProdukAsuransi() {
   const handlePilihClick = (product) => {
     setSelectedProduct(product);
     setFormData({ nilaiPertanggungan: '', namaPenerima: '', nikPenerima: '' });
-    setErrors({}); // Bersihkan log eror lama
+    setErrors({});
     setErrorPopup({ show: false, message: '' });
     setShowModal(true);
   };
@@ -99,9 +101,26 @@ export default function ProdukAsuransi() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Hapus eror pada field terkait jika user mulai mengetik ulang
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  // TAMBAHKAN: Fungsi untuk membuka/mengunduh S&K
+  const handleLihatSK = (pdfUrl) => {
+    if (!pdfUrl) {
+      setErrorPopup({ show: true, message: 'File Syarat & Ketentuan belum tersedia untuk produk ini.' });
+      setTimeout(() => setErrorPopup({ show: false, message: '' }), 3000);
+      return;
+    }
+    
+    // Jika URL lengkap (http/https), buka langsung
+    if (pdfUrl.startsWith('http')) {
+      window.open(pdfUrl, '_blank');
+    } else {
+      // Jika hanya nama file, gunakan base URL backend
+      const baseUrl = 'http://127.0.0.1:8000';
+      window.open(`${baseUrl}/storage/${pdfUrl}`, '_blank');
     }
   };
 
@@ -118,9 +137,6 @@ export default function ProdukAsuransi() {
   const handleBeliPolis = () => {
     const { nilaiPertanggungan, namaPenerima, nikPenerima } = formData;
     
-    // ====================================================================
-    // PERBAIKAN VALIDASI: Cek kelengkapan & keabsahan panjang 16 digit NIK
-    // ====================================================================
     const modalErrors = {};
     if (!nilaiPertanggungan) modalErrors.nilaiPertanggungan = 'Nilai pertanggungan wajib dipilih';
     if (!namaPenerima.trim()) modalErrors.namaPenerima = 'Nama lengkap penerima wajib diisi';
@@ -132,7 +148,6 @@ export default function ProdukAsuransi() {
       modalErrors.nikPenerima = `NIK harus tepat 16 digit (Saat ini: ${cleanNik.length} digit)`;
     }
 
-    // Jika ada input tidak valid, cegah pindah halaman & nyalakan border merah
     if (Object.keys(modalErrors).length > 0) {
       setErrors(modalErrors);
       setErrorPopup({ show: true, message: 'Terdapat data yang belum diisi atau tidak valid. Silahkan periksa kembali!' });
@@ -229,6 +244,16 @@ export default function ProdukAsuransi() {
                   <p className="text-gray-600 text-sm flex items-center gap-2">
                     <span className="text-green-500">✓</span> {product.description}
                   </p>
+                  {/* TAMBAHKAN: Tombol Lihat S&K */}
+                  {product.pdfFile && (
+                    <button 
+                      onClick={() => handleLihatSK(product.pdfFile)} 
+                      className="text-xs text-sky-600 hover:text-sky-800 flex items-center gap-1 mt-2 font-medium"
+                    >
+                      <FaFilePdf size={12} />
+                      Lihat Syarat & Ketentuan
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -247,6 +272,19 @@ export default function ProdukAsuransi() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Polis</label>
                 <input type="text" value={selectedProduct.name} disabled className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-600 font-medium" />
               </div>
+              
+              {/* TAMBAHKAN: Link S&K di dalam modal */}
+              {selectedProduct.pdfFile && (
+                <div>
+                  <button 
+                    onClick={() => handleLihatSK(selectedProduct.pdfFile)} 
+                    className="text-sm text-sky-600 hover:text-sky-800 flex items-center gap-1 font-medium"
+                  >
+                    <FaFilePdf size={14} />
+                    📄 Baca Syarat & Ketentuan
+                  </button>
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nilai Pertanggungan (Rp)</label>
@@ -272,16 +310,14 @@ export default function ProdukAsuransi() {
                 {errors.namaPenerima && <p className="text-red-500 text-xs mt-1 font-medium">⚠️ {errors.namaPenerima}</p>}
               </div>
               
-              {/* FIELD UPDATE: Border merah dinamis, pencegahan selain angka, dan pembatasan maxLength */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">NIK Penerima</label>
                 <input 
                   type="text" 
                   name="nikPenerima" 
-                  maxLength={16} // Kunci input maksimal di angka 16
+                  maxLength={16}
                   value={formData.nikPenerima} 
                   onChange={(e) => {
-                    // Paksa membuang input apabila isinya selain angka (0-9)
                     const value = e.target.value.replace(/[^0-9]/g, '');
                     setFormData(prev => ({ ...prev, nikPenerima: value }));
                     if (errors.nikPenerima) {

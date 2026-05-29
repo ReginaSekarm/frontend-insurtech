@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaClock, FaCheckCircle, FaTimesCircle, FaInfoCircle, FaArrowLeft } from 'react-icons/fa';
+import { FaClock, FaCheckCircle, FaTimesCircle, FaInfoCircle, FaAngleLeft } from 'react-icons/fa';
 import { AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -58,7 +58,7 @@ export default function Notifikasi() {
       <div className="max-w-4xl mx-auto space-y-6 pb-10">
         <div className="flex items-center gap-3 border-b pb-3">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
-            <FaArrowLeft size={20} />
+            <FaAngleLeft size={20} />
           </button>
           <h1 className="text-2xl font-bold text-gray-800">Notifikasi</h1>
         </div>
@@ -72,7 +72,7 @@ export default function Notifikasi() {
       <div className="max-w-4xl mx-auto space-y-6 pb-10">
         <div className="flex items-center gap-3 border-b pb-3">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
-            <FaArrowLeft size={20} />
+            <FaAngleLeft size={20} />
           </button>
           <h1 className="text-2xl font-bold text-gray-800">Notifikasi</h1>
         </div>
@@ -87,7 +87,7 @@ export default function Notifikasi() {
     <div className="max-w-4xl mx-auto space-y-6 pb-10">
       <div className="flex items-center gap-3 border-b pb-3">
         <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900 transition p-1">
-          <FaArrowLeft size={20} />
+          <FaAngleLeft size={20} />
         </button>
         <h1 className="text-2xl font-bold text-gray-800">Notifikasi</h1>
       </div>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import keluarga from '../assets/keluarga.jpeg';
 import asuransiBox from '../assets/asuransibox.jpeg';
@@ -17,8 +18,8 @@ export default function LandingPage() {
   );
 }
 
-// DATA 
-const stats = [
+// DATA DEFAULT (Digunakan sebagai fallback jika API gagal/loading)
+const initialStats = [
   { value: '50+', label: 'Pelanggan Aktif' },
   { value: '25+', label: 'Klaim Diproses' },
   { value: '15+', label: 'Penghargaan Nasional' },
@@ -91,6 +92,36 @@ function Navbar() {
 }
 
 function Hero() {
+  // State untuk menampung data statistik dari API
+  const [statsData, setStatsData] = useState(initialStats);
+
+  // Mengambil data dari backend saat halaman dimuat
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Ganti URL ini dengan endpoint API backend/database Anda yang sebenarnya
+        const response = await fetch('http://localhost:8000/api/landing-stats');
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Memperbarui state dengan data dari database. 
+          // Sesuaikan 'data.pelanggan_aktif', dll dengan struktur field JSON dari backend Anda.
+          setStatsData([
+            { value: data.pelanggan_aktif || initialStats[0].value, label: 'Pelanggan Aktif' },
+            { value: data.klaim_diproses || initialStats[1].value, label: 'Klaim Diproses' },
+            { value: data.penghargaan || initialStats[2].value, label: 'Penghargaan Nasional' },
+            { value: data.kepuasan || initialStats[3].value, label: 'Kepuasan Pelanggan' },
+          ]);
+        }
+      } catch (error) {
+        console.error('Gagal mengambil data statistik dari database:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <section className="bg-gradient-to-br from-blue-200 via-blue-150 to-slate-100">
       <Navbar />
@@ -129,7 +160,8 @@ function Hero() {
       </div>
       <div className="bg-sky-950 shadow-lg mt-4">
         <div className="max-w-5xl mx-auto px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {stats.map(({ value, label }) => (
+          {/* Mapping menggunakan state statsData */}
+          {statsData.map(({ value, label }) => (
             <div key={label} className="text-center">
               <p className="text-white text-3xl font-extrabold">{value}</p>
               <p className="text-white text-xs mt-1">{label}</p>
