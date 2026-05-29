@@ -7,7 +7,6 @@ export default function AdminTambahProduk() {
   const location = useLocation();
   const { mode, product } = location.state || { mode: 'add', product: null };
 
-  // Sesuaikan default state dengan nilai yang diterima backend Laravel
   const [status, setStatus] = useState('draft');
   const [formData, setFormData] = useState({
     namaProduk: '',
@@ -18,10 +17,16 @@ export default function AdminTambahProduk() {
     deskripsi: '',
   });
   const [pdfFile, setPdfFile] = useState(null);
+  
+  // State untuk Popup
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorMessages, setErrorMessages] = useState([]);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
 
+  // Auto-close error popup
   useEffect(() => {
     if (showErrorPopup) {
       const timer = setTimeout(() => setShowErrorPopup(false), 3000);
@@ -40,7 +45,6 @@ export default function AdminTambahProduk() {
         deskripsi: product.deskripsi || product.Deskripsi_Produk || '',
       });
       if (product.status) {
-        // Konversi dari database (published/draft/archived) ke state komponen
         const statusMap = { published: 'published', draft: 'draft', archived: 'archived', Aktif: 'published', Nonaktif: 'archived' };
         setStatus(statusMap[product.status] || 'draft');
       }
@@ -71,22 +75,16 @@ export default function AdminTambahProduk() {
       const token = localStorage.getItem('token');
       const submitData = new FormData();
       
-      // PERUBAHAN UTAMA: Sesuaikan key dengan aturan validasi di Laravel ($request->validate)
       submitData.append('Nama_Produk', formData.namaProduk);
       submitData.append('Deskripsi_Produk', formData.deskripsi);
       submitData.append('Harga_Premi', parseInt(formData.premi || 0));
       
-      // Jika mode edit, kirimkan status yang valid untuk backend (draft, published, archived)
-      // Jika tipe tombol klik adalah 'publish', paksa status menjadi 'published'
       const finalStatus = type === 'publish' ? 'published' : status;
       submitData.append('status', finalStatus);
 
-      // Sesuai model di backend Anda, jika ada field tambahan silakan disesuaikan
       if (formData.kategori) submitData.append('Kategori_Produk', formData.kategori);
       
-      // PERBAIKAN: Pastikan Maksimal_Klaim terkirim dengan benar
       const maksKlaimValue = parseInt(formData.maksKlaim || 0);
-      console.log('Maksimal Klaim yang dikirim:', maksKlaimValue); // LOGGING
       submitData.append('Maksimal_Klaim', maksKlaimValue);
       
       if (formData.masaTunggu) submitData.append('Masa_Tunggu', parseInt(formData.masaTunggu || 0));
@@ -104,12 +102,6 @@ export default function AdminTambahProduk() {
         ? `${baseUrl}/api/admin/produk/${product.id || product.ID_Produk}`
         : `${baseUrl}/api/admin/produk`;
 
-      // LOGGING: Tampilkan data yang akan dikirim
-      console.log('Data yang dikirim:');
-      for (let pair of submitData.entries()) {
-        console.log(pair[0] + ': ' + pair[1]);
-      }
-
       const response = await fetch(url, {
         method: 'POST', 
         headers: {
@@ -120,17 +112,25 @@ export default function AdminTambahProduk() {
       });
 
       const responseData = await response.json();
-      console.log('Response dari server:', responseData); // LOGGING
 
       if (!response.ok) {
          throw new Error(responseData.message || 'Gagal menyimpan produk');
       }
       
-      alert(`Produk berhasil ${type === 'publish' ? 'dipublikasikan' : 'disimpan sebagai draft'}`);
-      navigate('/admin-produk');
+      // MENGGANTI ALERT SUCCESS DENGAN POPUP KUSTOM
+      setSuccessMessage(`Produk berhasil ${type === 'publish' ? 'dipublikasikan' : 'disimpan sebagai draft'}`);
+      setShowSuccessPopup(true);
+      
+      // Beri jeda 2 detik agar admin bisa melihat popup sukses, baru pindah halaman
+      setTimeout(() => {
+        navigate('/admin-produk');
+      }, 2000);
+
     } catch (err) {
       console.error('Error saving product:', err);
-      alert(err.message || 'Gagal menyimpan produk. Silakan coba lagi.');
+      // MENGGANTI ALERT ERROR DENGAN POPUP KUSTOM
+      setErrorMessages([err.message || 'Gagal menyimpan produk. Silakan coba lagi.']);
+      setShowErrorPopup(true);
     } finally {
       setIsLoading(false);
     }
@@ -269,6 +269,21 @@ export default function AdminTambahProduk() {
             <div className="text-gray-600 text-sm mb-3 text-left space-y-1">
               {errorMessages.map((msg, i) => <p key={i}>• {msg}</p>)}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP SUCCESS BARU */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center animate-fade-in-up">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Berhasil!</h3>
+            <p className="text-gray-600 text-sm">{successMessage}</p>
           </div>
         </div>
       )}

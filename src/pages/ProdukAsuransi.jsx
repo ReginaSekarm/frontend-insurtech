@@ -59,8 +59,9 @@ export default function ProdukAsuransi() {
                   price: parseInt(prod.price || prod.premi || prod.Harga_Premi || 0),
                   description: prod.description || prod.deskripsi || prod.Deskripsi_Produk || 'Melindungi masa depan Anda',
                   badge: prod.badge || null,
-                  // TAMBAHKAN: Ambil file S&K dari response API
-                  pdfFile: prod.pdf_file || prod.pdfFile || prod.file_path || prod.syarat_dan_ketentuan || null,
+                  
+                  // PERBAIKAN UTAMA: Menempatkan prod.file_snk di urutan pertama agar langsung dibaca dari database
+                  pdfFile: prod.file_snk || prod.pdf_file || prod.pdfFile || prod.file_path || prod.syarat_dan_ketentuan || null,
                 });
               }
             });
@@ -244,7 +245,7 @@ export default function ProdukAsuransi() {
                   <p className="text-gray-600 text-sm flex items-center gap-2">
                     <span className="text-green-500">✓</span> {product.description}
                   </p>
-                  {/* TAMBAHKAN: Tombol Lihat S&K */}
+                  {/* Tombol Lihat S&K */}
                   {product.pdfFile && (
                     <button 
                       onClick={() => handleLihatSK(product.pdfFile)} 
@@ -273,7 +274,7 @@ export default function ProdukAsuransi() {
                 <input type="text" value={selectedProduct.name} disabled className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-600 font-medium" />
               </div>
               
-              {/* TAMBAHKAN: Link S&K di dalam modal */}
+              {/* Link S&K di dalam modal */}
               {selectedProduct.pdfFile && (
                 <div>
                   <button 

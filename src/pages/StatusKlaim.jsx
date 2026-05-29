@@ -1,35 +1,29 @@
 import { useState, useEffect } from 'react';
 import { FaDownload } from 'react-icons/fa';
 import { FaHome, FaHeartbeat, FaCar, FaGraduationCap } from 'react-icons/fa';
-import { api } from '../lib/api'; // TAMBAHAN: Import fungsi api
+import { api } from '../lib/api'; 
+import jsPDF from 'jspdf'; // Wajib
+import html2canvas from 'html2canvas'; // TAMBAHAN Wajib untuk metode HTML-to-PDF
 
 export default function StatusKlaim() {
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ====================================================================
-  // PERUBAHAN: Memperbarui deteksi ikon berdasarkan kata kunci jenis klaim
-  // ====================================================================
   const getIconByJenis = (jenis) => {
     if (!jenis) return <FaHome className="text-gray-400 text-3xl" />;
     
-    // Ubah ke huruf kecil semua agar pengecekan lebih mudah dan tidak sensitif huruf besar/kecil
     const j = jenis.toLowerCase();
 
-    // Kategori Kesehatan
     if (j.includes('kesehatan') || j.includes('rawat inap') || j.includes('fisik') || j.includes('kecelakaan')) {
       return <FaHeartbeat className="text-red-500 text-3xl" />;
     }
-    // Kategori Kendaraan
     if (j.includes('kendaraan') || j.includes('mobil') || j.includes('motor')) {
       return <FaCar className="text-amber-300 text-3xl" />;
     }
-    // Kategori Pendidikan
     if (j.includes('pendidikan') || j.includes('anak')) {
       return <FaGraduationCap className="text-zinc-600 text-3xl" />;
     }
-    // Kategori Properti / Default Asuransi Umum
     if (j.includes('properti') || j.includes('kebakaran') || j.includes('pencurian') || j.includes('kerusakan')) {
       return <FaHome className="text-blue-300 text-3xl" />;
     }
@@ -54,22 +48,19 @@ export default function StatusKlaim() {
     const fetchKlaim = async () => {
       try {
         const token = localStorage.getItem('token');
-        
-        // PERUBAHAN: Gunakan fungsi api() dan arahkan ke '/klaim/saya' sesuai dengan rute Laravel
         const { data } = await api('/klaim/saya', 'GET', null, token);
         
-        // Pastikan data adalah array (handling struktur respons yang bervariasi)
         const klaimArray = Array.isArray(data) ? data : (data?.claims || data?.data || []);
-        
-        const validClaims = klaimArray.filter(claim => claim); // Filter agar tidak ada object null
+        const validClaims = klaimArray.filter(claim => claim); 
         
         const withIcons = validClaims.map(claim => ({
           ...claim,
-          // Menyesuaikan mapping field jika data dari backend berbeda nama key-nya
           jenis: claim.jenis || claim.Jenis_Klaim || 'Klaim Umum',
           noPolis: claim.noPolis || claim.ID_Polis || '-',
           status: claim.status || claim.Status_Klaim || 'DIPROSES',
           tglPengajuan: claim.tglPengajuan || claim.Tanggal_Pengajuan || '-',
+          tglPencairan: claim.tglPencairan || claim.Tanggal_Pencairan || '-',
+          jumlah_raw: claim.Jumlah_Klaim || claim.jumlah || 0, // Simpan angka mentah untuk kalkulasi
           jumlah: claim.jumlah || (claim.Jumlah_Klaim ? `Rp ${Number(claim.Jumlah_Klaim).toLocaleString('id-ID')}` : 'Rp 0'),
           icon: getIconByJenis(claim.jenis || claim.Jenis_Klaim || '')
         }));
@@ -88,44 +79,99 @@ export default function StatusKlaim() {
   }, []);
 
   // ====================================================================
-  // PERUBAHAN: Fungsi untuk mengunduh dokumen klaim dari Backend Laravel
+  // PERUBAHAN UTAMA: Fungsi untuk mengunduh dokumen klaim dari Backend Laravel
   // ====================================================================
-  const handleDownload = async (claimNo) => {
+  const handleDownload = async (claim) => {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    
+    // Teks paragraf surat yang panjang, menggunakan placeholder dinamis
+    const paragrafSurat = `Melalui surat ini, kami dari PT InsurTech Asuransi Indonesia dengan bangga menyampaikan bahwa klaim asuransi ${claim.jenis.toLowerCase()} yang Bapak/Ibu ajukan pada tanggal <strong>${claim.tglPengajuan}</strong> telah melalui proses verifikasi dan evaluasi secara menyeluruh oleh tim kami. Berdasarkan hasil penilaian tersebut, kami dengan senang hati menginformasikan bahwa klaim Bapak/Ibu <strong>DISETUJUI</strong> dengan rincian sebagai berikut:`;
+
+    // 1. BUAT HTML TEMPLATE SESUAI GAMBAR CONTOH
+    const htmlString = `
+      <div style="font-family: Arial, sans-serif; width: 700px; padding: 60px; color: black; line-height: 1.6; background: white;">
+        
+        <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 20px; margin-bottom: 30px;">
+          <h1 style="color: #1B3A5C; margin: 0; font-size: 28px;">PT INSURTECH ASURANSI INDONESIA</h1>
+          <p style="margin: 5px 0; font-size: 14px; color: #444;">Jl. Sudirman Kav. 52-53, Jakarta Selatan 12190 | Telp. (021) 555-0100 | www.insurtech.co.id</p>
+        </div>
+
+        <div style="margin-bottom: 25px; display: flex; justify-content: space-between; font-size: 14px;">
+          <div>No. Surat: IST/KL/2026/${String(claims.indexOf(claim) + 1).padStart(3, '0')}</div>
+          <div style="text-align: right;">Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+        </div>
+
+        <div style="background-color: #D1FAE5; color: #065F46; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 30px; letter-spacing: 1px;">KLAIM DISETUJUI</div>
+
+        <div style="display: flex; gap: 40px; margin-bottom: 40px; font-size: 14px;">
+          <div style="flex: 1; font-weight: bold;">
+            <p style="margin: 6px 0;">No. Polis</p>
+            <p style="margin: 6px 0;">Jenis Asuransi</p>
+            <p style="margin: 6px 0;">Tgl. Pengajuan</p>
+            <p style="margin: 6px 0;">Tgl. Pencairan</p>
+          </div>
+          <div style="flex: 2;">
+            <p style="margin: 6px 0;">:${claim.noPolis}</p>
+            <p style="margin: 6px 0;">:${claim.jenis}</p>
+            <p style="margin: 6px 0;">:${claim.tglPengajuan}</p>
+            <p style="margin: 6px 0;">:${claim.tglPencairan && claim.tglPencairan !== '-' ? claim.tglPencairan : 'Maksimal 3 hari kerja'}</p>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #ccc; margin-bottom: 35px;"></div>
+
+        <div style="font-size: 14px; margin-bottom: 30px; text-align: justify;">
+          <p>Kepada Yth.<br/>Bapak/Ibu Tertanggung<br/>Pemegang Polis #${claim.noPolis}</p>
+          <p style="margin-top: 25px;">Dengan hormat,</p>
+          <p style="margin-top: 15px;">${paragrafSurat}</p>
+        </div>
+
+        <div style="margin-bottom: 45px; font-size: 14px;">
+          <p style="font-weight: bold; color: #1B3A5C; margin-bottom: 8px;">Jumlah Klaim Disetujui</p>
+          <p style="font-size: 24px; font-weight: bold; color: #1B3A5C; margin: 0;">${claim.jumlah}</p>
+        </div>
+
+        <div style="font-size: 14px; margin-bottom: 100px; text-align: justify; color: #444;">
+          <p>Dana tersebut akan ditransfer ke rekening bank yang telah Bapak/Ibu daftarkan dalam waktu 1-3 hari kerja sejak tanggal surat ini diterbitkan.</p>
+          <p style="margin-top: 15px;">Kami menghargai kepercayaan Bapak/Ibu kepada InsurTech. Jika terdapat pertanyaan lebih lanjut, jangan ragu menghubungi kami melalui layanan pelanggan di nomor (021) 555-0100 atau email cs@insurtech.co.id.</p>
+          <p style="margin-top: 15px;">Demikian surat pemberitahuan ini kami sampaikan. Terima kasih.</p>
+        </div>
+
+        <div style="text-align: right; font-size: 14px;">
+          <p>Hormat kami,</p>
+          <br/><br/><br/>
+          <p style="font-weight: bold;">Andi Prasetyo, S.E., M.M.</p>
+          <p style="color: #444;">Kepala Divisi Klaim</p>
+          <p style="color: #444;">PT InsurTech Asuransi Indonesia</p>
+        </div>
+
+      </div>
+    `;
+
+    // 2. RENDER HTML KE PDF MENGGUNAKAN JSPDF
+    // Buat elemen div sementara untuk merender HTML di DOM
+    const tempDiv = document.body.appendChild(document.createElement('div'));
+    tempDiv.innerHTML = htmlString;
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px'; // Sembunyikan div
+
     try {
-      const token = localStorage.getItem('token');
-      
-      // Request ke endpoint download Laravel (Sesuaikan '/api/klaim/unduh/' dengan route backend Anda)
-      const response = await fetch(`http://127.0.0.1:8000/api/klaim/unduh/${claimNo}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Gagal mengunduh surat klaim.');
-      }
-
-      // Mengubah response dari server menjadi file Blob (binary large object)
-      const blob = await response.blob();
-      
-      // Membuat URL sementara untuk file blob tersebut
-      const url = window.URL.createObjectURL(blob);
-      
-      // Membuat elemen <a> secara virtual untuk memicu download otomatis
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Surat_Klaim_${claimNo}.pdf`; // Nama file saat tersimpan di device
-      document.body.appendChild(link);
-      link.click();
-      
-      // Membersihkan elemen dan URL memori setelah selesai
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
+        // Konversi div tersebut menjadi PDF
+        await doc.html(tempDiv, {
+            callback: function (doc) {
+                doc.save(`Surat_Persetujuan_Klaim_${claim.noPolis}.pdf`);
+                // Bersihkan div sementara
+                document.body.removeChild(tempDiv);
+            },
+            x: 10, // Margin kiri PDF
+            y: 10, // Margin atas PDF
+            width: 190, // Lebar konten HTML di PDF
+            windowWidth: 700 // Sesuaikan dengan lebar div HTML di atas
+        });
     } catch (error) {
-      console.error('Error saat unduh:', error);
-      alert('Terjadi kesalahan saat mengunduh surat klaim. Pastikan file tersedia di server.');
+        console.error("Gagal membuat PDF:", error);
+        alert("Terjadi kesalahan saat membuat file PDF.");
+        document.body.removeChild(tempDiv); // Pastikan div bersih
     }
   };
 
@@ -214,15 +260,19 @@ export default function StatusKlaim() {
                   </p>
                 </div>
 
-                <div className="pt-2">
-                  <button
-                    onClick={() => handleDownload(claim.noPolis)}
-                    className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm ${getButtonStyle(claim.status)}`}
-                  >
-                    <FaDownload size={14} />
-                    Unduh Surat Klaim (PDF)
-                  </button>
-                </div>
+                {/* Tombol hanya muncul JIKA status klaim DISETUJUI */}
+                {claim.status === 'DISETUJUI' && (
+                  <div className="pt-2">
+                    <button
+                      onClick={() => handleDownload(claim)} // Mengirim object klaim lengkap
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-sky-950 hover:bg-sky-800 text-white transition shadow-sm"
+                    >
+                      <FaDownload size={14} />
+                      Unduh Surat Persetujuan (PDF)
+                    </button>
+                  </div>
+                )}
+
               </div>
             </div>
           ))
