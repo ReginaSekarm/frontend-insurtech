@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
-import { api } from '../lib/api'; // TAMBAHAN: Import fungsi api
+import { FaUser, FaCheckCircle, FaExclamationTriangle, FaEye, FaFilePdf, FaImage } from 'react-icons/fa';
+import { api } from '../lib/api';
 
 export default function AdminPengguna() {
   const navigate = useNavigate();
@@ -10,23 +10,25 @@ export default function AdminPengguna() {
   const [penggunaData, setPenggunaData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageTitle, setSelectedImageTitle] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
         
-        // 1. Ambil daftar verifikasi pending (jika rute ini ada)
+        // 1. Ambil daftar verifikasi pending
         try {
           const verifRes = await api('/admin/verifikasi/pending', 'GET', null, token);
           const verifData = Array.isArray(verifRes.data) ? verifRes.data : (verifRes.data?.data || []);
           
-          // Map data verifikasi agar sesuai dengan kebutuhan tampilan
           const mappedVerif = verifData.map(item => ({
-             id: item.id || item.ID_Pengguna,
-             nama: item.nama || item.Nama_Lengkap || 'User',
-             pending: item.pending || 'Dokumen belum direview',
-             _original: item
+            id: item.ID_Pengguna || item.id,
+            nama: item.Nama_Lengkap || item.nama || 'User',
+            pending: 'Dokumen belum direview',
+            _original: item
           }));
           setVerifikasiData(mappedVerif);
         } catch (verifErr) {
@@ -34,27 +36,24 @@ export default function AdminPengguna() {
           setVerifikasiData([]);
         }
 
-        // 2. Ambil daftar pengguna (menggunakan rute resource /pengguna)
-        try {
-          const userRes = await api('/pengguna', 'GET', null, token);
-          const userData = Array.isArray(userRes.data) ? userRes.data : (userRes.data?.data || []);
-          
-          // Map data pengguna agar sesuai dengan kolom tabel
-          const mappedUsers = userData.map(user => ({
-              id: user.id || user.ID_Pengguna,
-              nama: user.nama || user.Nama_Lengkap || 'Nama Tidak Diketahui',
-              email: user.email || user.Email || '-',
-              polis: user.polis || user.jumlah_polis || 0, // Fallback angka
-              klaim: user.klaim || user.jumlah_klaim || 0, // Fallback angka
-              ktp: user.ktp || user.ktp_status === 'verified' || user.Verifikasi_Status === 'verified', // Cek status verifikasi KTP
-              kk: user.kk || user.kk_status === 'verified' || user.Verifikasi_Status === 'verified' // Cek status verifikasi KK
-          }));
-          
-          setPenggunaData(mappedUsers);
-        } catch (userErr) {
-           throw new Error(userErr.message || 'Gagal mengambil data pengguna dari server');
-        }
-
+        // 2. Ambil daftar pengguna — polis_count & klaim_count sudah ada dari backend (withCount)
+        const userRes = await api('/pengguna', 'GET', null, token);
+        const userData = Array.isArray(userRes.data) ? userRes.data : (userRes.data?.data || []);
+        
+        const usersWithStats = userData.map((user) => {
+          return {
+            id: user.ID_Pengguna || user.id,
+            nama: user.Nama_Lengkap || user.nama || 'Nama Tidak Diketahui',
+            email: user.Email || user.email || '-',
+            polis: user.polis_count ?? 0,   // ✅ dari withCount backend
+            klaim: user.klaim_count ?? 0,   // ✅ dari withCount backend
+            foto_ktp: user.foto_ktp,
+            foto_kk: user.foto_kk,
+            verifikasi_status: user.verifikasi_status
+          };
+        });
+        
+        setPenggunaData(usersWithStats);
       } catch (err) {
         console.error('Error fetching admin pengguna:', err);
         setError(err.message);
@@ -64,6 +63,34 @@ export default function AdminPengguna() {
     };
     fetchData();
   }, []);
+
+  const handleBukaDokumen = (url, title) => {
+    if (!url) {
+      alert('Dokumen belum diupload');
+      return;
+    }
+    
+    const fullUrl = `http://127.0.0.1:8000/storage/${url}`;
+    
+    if (url.endsWith('.pdf')) {
+      window.open(fullUrl, '_blank');
+    } else {
+      setSelectedImage(fullUrl);
+      setSelectedImageTitle(title);
+      setShowImageModal(true);
+    }
+  };
+
+  const handleVerifikasi = (item) => {
+    navigate('/admin-verifikasi-dokumen', { 
+      state: { 
+        userData: {
+          ID_Pengguna: item.id,
+          Nama_Lengkap: item.nama
+        }
+      } 
+    });
+  };
 
   const filteredPengguna = penggunaData.filter(user =>
     (user.nama && user.nama.toLowerCase().includes(search.toLowerCase())) ||
@@ -100,7 +127,7 @@ export default function AdminPengguna() {
                 <p className="text-xs text-orange-600 font-medium mt-0.5">{item.pending}</p>
               </div>
               <button
-                onClick={() => navigate('/admin-verifikasi-dokumen', { state: { userData: item } })}
+                onClick={() => handleVerifikasi(item)}
                 className="bg-[#1B3A5C] hover:bg-sky-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition"
               >
                 Verifikasi
@@ -144,10 +171,30 @@ export default function AdminPengguna() {
                   <td className="px-5 py-3.5 text-gray-800 font-medium">{item.polis}</td>
                   <td className="px-5 py-3.5 text-gray-800 font-medium">{item.klaim}</td>
                   <td className="px-5 py-3.5">
-                    {item.ktp ? <FaCheckCircle className="text-green-500 text-lg" title="Terverifikasi" /> : <FaExclamationTriangle className="text-orange-400 text-lg" title="Belum Terverifikasi" />}
+                    {item.foto_ktp ? (
+                      <button
+                        onClick={() => handleBukaDokumen(item.foto_ktp, `KTP - ${item.nama}`)}
+                        className="text-green-500 hover:text-green-700"
+                        title="Klik untuk lihat dokumen"
+                      >
+                        <FaCheckCircle className="text-lg" />
+                      </button>
+                    ) : (
+                      <FaExclamationTriangle className="text-orange-400 text-lg" title="Belum upload KTP" />
+                    )}
                   </td>
                   <td className="px-5 py-3.5">
-                    {item.kk ? <FaCheckCircle className="text-green-500 text-lg" title="Terverifikasi" /> : <FaExclamationTriangle className="text-orange-400 text-lg" title="Belum Terverifikasi" />}
+                    {item.foto_kk ? (
+                      <button
+                        onClick={() => handleBukaDokumen(item.foto_kk, `KK - ${item.nama}`)}
+                        className="text-green-500 hover:text-green-700"
+                        title="Klik untuk lihat dokumen"
+                      >
+                        <FaCheckCircle className="text-lg" />
+                      </button>
+                    ) : (
+                      <FaExclamationTriangle className="text-orange-400 text-lg" title="Belum upload KK" />
+                    )}
                   </td>
                 </tr>
               ))}
@@ -168,6 +215,51 @@ export default function AdminPengguna() {
           </div>
         </div>
       </div>
+
+      {/* Modal Preview Gambar */}
+      {showImageModal && selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowImageModal(false);
+            setSelectedImage(null);
+          }}
+        >
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => {
+                setShowImageModal(false);
+                setSelectedImage(null);
+              }}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors text-3xl font-bold"
+            >
+              ✕
+            </button>
+            <h3 className="text-white text-center mb-2">{selectedImageTitle}</h3>
+            <img
+              src={selectedImage}
+              alt={selectedImageTitle}
+              className="w-full h-auto rounded-lg shadow-2xl"
+              style={{ maxHeight: '85vh', objectFit: 'contain' }}
+              onError={(e) => {
+                alert('Gagal memuat gambar');
+                setShowImageModal(false);
+              }}
+            />
+            <div className="text-center mt-4">
+              <button
+                onClick={() => {
+                  setShowImageModal(false);
+                  setSelectedImage(null);
+                }}
+                className="bg-white text-gray-800 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaUserCircle, FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash, FaTrash, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaUserCircle, FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash, FaTrash, FaExternalLinkAlt, FaTimes } from 'react-icons/fa';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -17,29 +17,26 @@ export default function RegisterPage() {
 
   const [ktpFile, setKtpFile] = useState(null);
   const [kkFile, setKkFile] = useState(null);
-  
   const [ktpPreview, setKtpPreview] = useState(null);
   const [kkPreview, setKkPreview] = useState(null);
-
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errors, setErrors] = useState({});
-
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [emailPopupMsg, setEmailPopupMsg] = useState('');
   const [showTermsPopup, setShowTermsPopup] = useState(false);
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageTitle, setSelectedImageTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // ✅ TAMBAHAN loading state
 
-  const registeredEmails = ['nasabah@insurtech.com', 'admin@insurtech.com']; 
+  const registeredEmails = ['nasabah@insurtech.com', 'admin@insurtech.com'];
 
-  // ====================================================================
-  // LOGIC BATAS TANGGAL: Mengunci tahun ini (Mentok di 31 Desember tahun lalu)
-  // ====================================================================
   const getMaxDateString = () => {
-    const lastYear = new Date().getFullYear() - 1; // Mendapatkan tahun lalu (2025)
-    return `${lastYear}-12-31`; // Menghasilkan batas format "2025-12-31"
+    const lastYear = new Date().getFullYear() - 1;
+    return `${lastYear}-12-31`;
   };
 
   const password = formData.password;
@@ -47,12 +44,6 @@ export default function RegisterPage() {
   const hasUpperCase = /[A-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-  const getPhoneDigits = (phone) => phone.replace(/\D/g, '');
-  const isPhoneValid = () => {
-    const digits = getPhoneDigits(formData.noTelepon);
-    return digits.length >= 11 && digits.length <= 13;
-  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -70,7 +61,13 @@ export default function RegisterPage() {
         return;
       }
       setKtpFile(file);
-      setKtpPreview(URL.createObjectURL(file)); 
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => setKtpPreview(reader.result);
+        reader.readAsDataURL(file);
+      } else {
+        setKtpPreview(null);
+      }
     }
   };
 
@@ -83,52 +80,61 @@ export default function RegisterPage() {
         return;
       }
       setKkFile(file);
-      setKkPreview(URL.createObjectURL(file)); 
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => setKkPreview(reader.result);
+        reader.readAsDataURL(file);
+      } else {
+        setKkPreview(null);
+      }
     }
   };
 
-  const handleRemoveKtp = () => {
-    if (ktpPreview) URL.revokeObjectURL(ktpPreview); 
-    setKtpFile(null);
-    setKtpPreview(null);
+  const handleBukaDokumen = (type, file, preview) => {
+    if (!file) { alert('File belum diupload'); return; }
+    if (file.type.startsWith('image/')) {
+      if (preview) {
+        setSelectedImage(preview);
+        setSelectedImageTitle(type === 'ktp' ? 'Foto KTP' : 'Foto KK');
+        setShowImageModal(true);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const newPreview = reader.result;
+          if (type === 'ktp') setKtpPreview(newPreview);
+          else setKkPreview(newPreview);
+          setSelectedImage(newPreview);
+          setSelectedImageTitle(type === 'ktp' ? 'Foto KTP' : 'Foto KK');
+          setShowImageModal(true);
+        };
+        reader.readAsDataURL(file);
+      }
+    } else if (file.type === 'application/pdf') {
+      const url = URL.createObjectURL(file);
+      window.open(url, '_blank');
+    }
   };
 
-  const handleRemoveKk = () => {
-    if (kkPreview) URL.revokeObjectURL(kkPreview); 
-    setKkFile(null);
-    setKkPreview(null);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (ktpPreview) URL.revokeObjectURL(ktpPreview);
-      if (kkPreview) URL.revokeObjectURL(kkPreview);
-    };
-  }, [ktpPreview, kkPreview]);
+  const handleRemoveKtp = () => { setKtpFile(null); setKtpPreview(null); };
+  const handleRemoveKk = () => { setKkFile(null); setKkPreview(null); };
 
   const validateForm = () => {
     const newErrors = {};
     if (!formData.namaLengkap.trim()) newErrors.namaLengkap = 'Nama lengkap harus diisi';
     if (!formData.email.trim()) newErrors.email = 'Email harus diisi';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Format email tidak valid';
-    
     if (!formData.noTelepon.trim()) newErrors.noTelepon = 'No telepon harus diisi';
     else if (!/^[0-9]{10,13}$/.test(formData.noTelepon.replace(/\s/g, ''))) newErrors.noTelepon = 'No telepon harus 10-13 digit angka';
-    
-    // PERBAIKAN VALIDASI TANGGAL: Mencegah bypass pengetikan manual tahun ini & masa depan
     if (!formData.tanggalLahir) {
       newErrors.tanggalLahir = 'Tanggal lahir harus diisi';
     } else {
       const selectedYear = new Date(formData.tanggalLahir).getFullYear();
-      const currentYear = new Date().getFullYear(); // Tahun 2026
-      if (selectedYear >= currentYear) {
-        newErrors.tanggalLahir = 'Tahun lahir tidak boleh tahun ini atau tahun depan';
-      }
+      const currentYear = new Date().getFullYear();
+      if (selectedYear >= currentYear) newErrors.tanggalLahir = 'Tahun lahir tidak boleh tahun ini atau tahun depan';
     }
-
     if (!formData.alamat.trim()) newErrors.alamat = 'Alamat harus diisi';
     if (!formData.password) newErrors.password = 'Password harus diisi';
-    else if (formData.password.length < 6) newErrors.password = 'Password minimal 6 karakter';
+    else if (formData.password.length < 8) newErrors.password = 'Password minimal 8 karakter';
     if (formData.password !== formData.konfirmasiPassword) newErrors.konfirmasiPassword = 'Password tidak cocok';
     return newErrors;
   };
@@ -137,73 +143,114 @@ export default function RegisterPage() {
     e.preventDefault();
 
     const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
     if (registeredEmails.includes(formData.email.toLowerCase())) {
-      setEmailPopupMsg(`Email ${formData.email} sudah digunakan. Silakan gunakan email lain atau masuk ke akun Anda.`);
+      setEmailPopupMsg(`Email ${formData.email} sudah digunakan.`);
       setShowEmailPopup(true);
       setTimeout(() => setShowEmailPopup(false), 3000);
       return;
     }
 
-    if (!ktpFile || !kkFile) {
-      alert('Harap upload KTP dan Kartu Keluarga');
-      return;
-    }
-    if (!agreeTerms) {
-      alert('Harap menyetujui syarat & ketentuan');
-      return;
-    }
+    if (!ktpFile || !kkFile) { alert('Harap upload KTP dan Kartu Keluarga'); return; }
+    if (!agreeTerms) { alert('Harap menyetujui syarat & ketentuan'); return; }
+
+    setIsLoading(true);
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('Nama_Lengkap', formData.namaLengkap);
-      formDataToSend.append('Email', formData.email);
-      formDataToSend.append('Password', formData.password);
-      formDataToSend.append('No_Telepon', formData.noTelepon);
-      formDataToSend.append('Tanggal_Lahir', formData.tanggalLahir);
-      formDataToSend.append('Alamat_Lengkap', formData.alamat);
-      formDataToSend.append('ktp', ktpFile);
-      formDataToSend.append('kk', kkFile);
-
-      const response = await fetch('http://localhost:8000/api/register', {
+      // ✅ STEP 1: Register akun (tanpa file)
+      const registerRes = await fetch('http://localhost:8000/api/register', {
         method: 'POST',
         headers: {
-          'Accept': 'application/json', 
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
         },
-        body: formDataToSend,
+        body: JSON.stringify({
+          Nama_Lengkap: formData.namaLengkap,
+          Email: formData.email,
+          Password: formData.password,
+          No_Telepon: formData.noTelepon,
+          Tanggal_Lahir: formData.tanggalLahir,
+          Alamat_Lengkap: formData.alamat,
+        }),
       });
 
-      const data = await response.json();
+      const registerData = await registerRes.json();
 
-      if (!response.ok) {
-        if (data.message && (data.message.toLowerCase().includes('email') || data.message.toLowerCase().includes('sudah terdaftar'))) {
-          setEmailPopupMsg(data.message);
+      if (!registerRes.ok) {
+        if (registerData.message?.toLowerCase().includes('email')) {
+          setEmailPopupMsg(registerData.message);
           setShowEmailPopup(true);
           setTimeout(() => setShowEmailPopup(false), 3000);
         } else {
-          const errorMsg = data.errors 
-            ? Object.values(data.errors).flat().join(', ') 
-            : data.message;
+          const errorMsg = registerData.errors
+            ? Object.values(registerData.errors).flat().join(', ')
+            : registerData.message;
           alert(errorMsg || 'Registrasi gagal. Silakan coba lagi.');
         }
         return;
       }
 
-      if (data.token) localStorage.setItem('token', data.token);
-      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+      // ✅ STEP 2: Login otomatis untuk dapat token
+      const loginRes = await fetch('http://localhost:8000/api/login', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          Email: formData.email,
+          Password: formData.password,
+        }),
+      });
 
+      const loginData = await loginRes.json();
+
+      if (!loginRes.ok) {
+        alert('Registrasi berhasil tapi gagal login otomatis. Silakan login manual.');
+        navigate('/login');
+        return;
+      }
+
+      const token = loginData.token;
+      localStorage.setItem('token', token);
+      if (loginData.user) localStorage.setItem('user', JSON.stringify(loginData.user));
+
+      // ✅ STEP 3: Upload dokumen KTP & KK dengan key yang benar
+      const dokumenForm = new FormData();
+      dokumenForm.append('foto_ktp', ktpFile); // ✅ key sesuai backend
+      dokumenForm.append('foto_kk', kkFile);   // ✅ key sesuai backend
+
+      const uploadRes = await fetch('http://localhost:8000/api/upload-dokumen', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          // ❌ jangan set Content-Type — biarkan browser set otomatis untuk FormData
+        },
+        body: dokumenForm,
+      });
+
+      const uploadData = await uploadRes.json();
+
+      if (!uploadRes.ok) {
+        alert('Akun berhasil dibuat, tapi gagal upload dokumen: ' + (uploadData.message || 'Coba upload ulang di halaman profil.'));
+        navigate('/login');
+        return;
+      }
+
+      // ✅ Semua berhasil
       setShowSuccessPopup(true);
       setTimeout(() => {
         setShowSuccessPopup(false);
-        navigate('/login'); 
+        navigate('/login');
       }, 2000);
+
     } catch (error) {
       console.error('Error registrasi:', error);
       alert('Terjadi kesalahan jaringan. Pastikan backend menyala.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -223,98 +270,46 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-              <input
-                type="text"
-                name="namaLengkap"
-                value={formData.namaLengkap}
-                onChange={handleChange}
-                placeholder="Nama Lengkap"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-              />
+              <input type="text" name="namaLengkap" value={formData.namaLengkap} onChange={handleChange} placeholder="Nama Lengkap"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
               {errors.namaLengkap && <p className="text-red-500 text-xs mt-1">{errors.namaLengkap}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="nama@gmail.com"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-              />
+              <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="nama@gmail.com"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">No. Telepon</label>
-              <input
-                type="tel"
-                name="noTelepon"
-                value={formData.noTelepon}
-                onChange={handleChange}
-                placeholder="08xx xxxx xxxx"
-                minLength="10"
-                maxLength="13"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-              />
-              {formData.noTelepon && (
-                <div className="mt-1 flex items-center gap-2 text-xs">
-                  {isPhoneValid() ? (
-                    <FaCheckCircle className="text-green-500" />
-                  ) : null}
-                </div>
-              )}
-              {formData.noTelepon && getPhoneDigits(formData.noTelepon).length > 0 && getPhoneDigits(formData.noTelepon).length < 11 && (
-                <p className="text-red-500 text-xs mt-1">Format no telepon minimal 11 digit</p>
-              )}
+              <input type="tel" name="noTelepon" value={formData.noTelepon} onChange={handleChange} placeholder="08xx xxxx xxxx" minLength="10" maxLength="13"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
               {errors.noTelepon && <p className="text-red-500 text-xs mt-1">{errors.noTelepon}</p>}
             </div>
 
-            {/* FIELD UPDATE: Kunci total pilihan kalender pada tahun ini */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
-              <input
-                type="date"
-                name="tanggalLahir"
-                max={getMaxDateString()} // Kalender mentok di 31 Desember 2025
-                value={formData.tanggalLahir}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-gray-800"
-              />
+              <input type="date" name="tanggalLahir" max={getMaxDateString()} value={formData.tanggalLahir} onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-gray-800" />
               {errors.tanggalLahir && <p className="text-red-500 text-xs mt-1">{errors.tanggalLahir}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Alamat</label>
-              <textarea
-                name="alamat"
-                value={formData.alamat}
-                onChange={handleChange}
-                rows="2"
-                placeholder="Alamat Lengkap"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-              />
+              <textarea name="alamat" value={formData.alamat} onChange={handleChange} rows="2" placeholder="Alamat Lengkap"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
               {errors.alamat && <p className="text-red-500 text-xs mt-1">{errors.alamat}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Password</label>
               <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="•••"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
-                >
+                <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} placeholder="•••"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700">
                   {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
               </div>
@@ -322,22 +317,10 @@ export default function RegisterPage() {
               <div className="mt-2 bg-gray-50 p-3 rounded-lg space-y-1">
                 <p className="text-xs font-semibold text-gray-600">Syarat Password</p>
                 <ul className="text-xs space-y-1 text-gray-600">
-                  <li className="flex items-center gap-2">
-                    {hasMinLength ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}
-                    Minimal 8 Karakter
-                  </li>
-                  <li className="flex items-center gap-2">
-                    {hasUpperCase ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}
-                    Mengandung huruf besar (A-Z)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    {hasNumber ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}
-                    Mengandung angka (0-9)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    {hasSpecialChar ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}
-                    Mengandung karakter unik (!@#$%)
-                  </li>
+                  <li className="flex items-center gap-2">{hasMinLength ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}Minimal 8 Karakter</li>
+                  <li className="flex items-center gap-2">{hasUpperCase ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}Mengandung huruf besar (A-Z)</li>
+                  <li className="flex items-center gap-2">{hasNumber ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}Mengandung angka (0-9)</li>
+                  <li className="flex items-center gap-2">{hasSpecialChar ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-400" />}Mengandung karakter unik (!@#$%)</li>
                 </ul>
               </div>
             </div>
@@ -345,19 +328,10 @@ export default function RegisterPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700">Konfirmasi Password</label>
               <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  name="konfirmasiPassword"
-                  value={formData.konfirmasiPassword}
-                  onChange={handleChange}
-                  placeholder="•••"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
-                >
+                <input type={showConfirmPassword ? 'text' : 'password'} name="konfirmasiPassword" value={formData.konfirmasiPassword} onChange={handleChange} placeholder="•••"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
+                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700">
                   {showConfirmPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
               </div>
@@ -370,64 +344,64 @@ export default function RegisterPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Dokumen Pendukung</label>
               <div className="flex flex-col gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                {/* KTP */}
                 <div className="flex flex-col gap-1 pb-2 border-b border-gray-200">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm text-gray-500 font-bold w-12">KTP</span>
                     {!ktpFile ? (
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.pdf"
-                        onChange={handleKtpChange}
-                        className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                      />
+                      <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleKtpChange}
+                        className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
                     ) : (
                       <div className="flex items-center gap-3 bg-white border px-3 py-1.5 rounded-lg text-sm text-gray-700 shadow-sm flex-1 max-w-full justify-between">
                         <span className="truncate max-w-[150px] font-medium text-xs">✓ {ktpFile.name}</span>
                         <div className="flex items-center gap-3">
-                          <a href={ktpPreview} target="_blank" rel="noreferrer" className="text-sky-700 hover:text-sky-900 flex items-center gap-1 text-xs font-semibold">
+                          <button type="button" onClick={() => handleBukaDokumen('ktp', ktpFile, ktpPreview)}
+                            className="text-sky-700 hover:text-sky-900 flex items-center gap-1 text-xs font-semibold">
                             <FaExternalLinkAlt size={11} /> Buka
-                          </a>
-                          <button type="button" onClick={handleRemoveKtp} className="text-red-500 hover:text-red-700 p-1" title="Batalkan file">
+                          </button>
+                          <button type="button" onClick={handleRemoveKtp} className="text-red-500 hover:text-red-700 p-1">
                             <FaTrash size={12} />
                           </button>
                         </div>
                       </div>
                     )}
                   </div>
-                  {ktpPreview && ktpFile && ktpFile.type.startsWith('image/') && (
+                  {ktpPreview && (
                     <div className="mt-2 ml-14">
-                      <img src={ktpPreview} alt="Pratinjau KTP" className="h-16 w-auto rounded border object-cover shadow-sm bg-white" />
+                      <img src={ktpPreview} alt="Pratinjau KTP"
+                        className="h-16 w-auto rounded border object-cover shadow-sm bg-white cursor-pointer hover:opacity-80"
+                        onClick={() => handleBukaDokumen('ktp', ktpFile, ktpPreview)} />
                     </div>
                   )}
                 </div>
 
+                {/* KK */}
                 <div className="flex flex-col gap-1 pt-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm text-gray-500 font-bold w-12">KK</span>
                     {!kkFile ? (
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.pdf"
-                        onChange={handleKkChange}
-                        className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                      />
+                      <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleKkChange}
+                        className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
                     ) : (
                       <div className="flex items-center gap-3 bg-white border px-3 py-1.5 rounded-lg text-sm text-gray-700 shadow-sm flex-1 max-w-full justify-between">
                         <span className="truncate max-w-[150px] font-medium text-xs">✓ {kkFile.name}</span>
                         <div className="flex items-center gap-3">
-                          <a href={kkPreview} target="_blank" rel="noreferrer" className="text-sky-700 hover:text-sky-900 flex items-center gap-1 text-xs font-semibold">
+                          <button type="button" onClick={() => handleBukaDokumen('kk', kkFile, kkPreview)}
+                            className="text-sky-700 hover:text-sky-900 flex items-center gap-1 text-xs font-semibold">
                             <FaExternalLinkAlt size={11} /> Buka
-                          </a>
-                          <button type="button" onClick={handleRemoveKk} className="text-red-500 hover:text-red-700 p-1" title="Batalkan file">
+                          </button>
+                          <button type="button" onClick={handleRemoveKk} className="text-red-500 hover:text-red-700 p-1">
                             <FaTrash size={12} />
                           </button>
                         </div>
                       </div>
                     )}
                   </div>
-                  {kkPreview && kkFile && kkFile.type.startsWith('image/') && (
+                  {kkPreview && (
                     <div className="mt-2 ml-14">
-                      <img src={kkPreview} alt="Pratinjau KK" className="h-16 w-auto rounded border object-cover shadow-sm bg-white" />
+                      <img src={kkPreview} alt="Pratinjau KK"
+                        className="h-16 w-auto rounded border object-cover shadow-sm bg-white cursor-pointer hover:opacity-80"
+                        onClick={() => handleBukaDokumen('kk', kkFile, kkPreview)} />
                     </div>
                   )}
                 </div>
@@ -437,30 +411,21 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex items-start">
-              <input
-                type="checkbox"
-                id="terms"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded mt-1"
-              />
+              <input type="checkbox" id="terms" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)}
+                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded mt-1" />
               <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
                 Saya menyetujui{' '}
-                <button
-                  type="button"
-                  onClick={() => setShowTermsPopup(true)}
-                  className="text-sky-900 font-medium hover:text-gray-600 transition-colors"
-                >
+                <button type="button" onClick={() => setShowTermsPopup(true)}
+                  className="text-sky-900 font-medium hover:text-gray-600 transition-colors">
                   Syarat & Ketentuan serta Kebijakan Privasi InsurTech
                 </button>
               </label>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
-            >
-              Daftar
+            {/* ✅ Tombol dengan loading state */}
+            <button type="submit" disabled={isLoading}
+              className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed">
+              {isLoading ? 'Memproses...' : 'Daftar'}
             </button>
 
             <p className="text-center text-sm text-gray-600">
@@ -472,6 +437,28 @@ export default function RegisterPage() {
           </form>
         </div>
       </div>
+
+      {/* MODAL PREVIEW GAMBAR */}
+      {showImageModal && selectedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+          onClick={() => { setShowImageModal(false); setSelectedImage(null); }}>
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => { setShowImageModal(false); setSelectedImage(null); }}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors text-3xl font-bold">
+              <FaTimes size={28} />
+            </button>
+            <h3 className="text-white text-center mb-2">{selectedImageTitle}</h3>
+            <img src={selectedImage} alt={selectedImageTitle}
+              className="w-full h-auto rounded-lg shadow-2xl"
+              style={{ maxHeight: '85vh', objectFit: 'contain' }}
+              onError={() => { alert('Gagal memuat gambar'); setShowImageModal(false); }} />
+            <div className="text-center mt-4">
+              <button onClick={() => { setShowImageModal(false); setSelectedImage(null); }}
+                className="bg-white text-gray-800 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* POPUP EMAIL SUDAH TERDAFTAR */}
       {showEmailPopup && (
@@ -496,64 +483,16 @@ export default function RegisterPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800">Syarat & Ketentuan InsurTech</h2>
-              <button
-                onClick={() => setShowTermsPopup(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ×
-              </button>
+              <button onClick={() => setShowTermsPopup(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
             </div>
             <div className="p-6 space-y-4 text-sm text-gray-700">
-              <div>
-                <h3 className="font-bold text-base mb-2">1. Penerimaan syarat</h3>
-                <p>Dengan mendaftar, mengakses, atau menggunakan layanan InsurTech, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang tercantum dalam dokumen ini. Jika Anda tidak menyetujui syarat ini, harap tidak melanjutkan penggunaan layanan.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">2. Definisi layanan</h3>
-                <p>InsurTech adalah platform teknologi asuransi yang menyediakan:</p>
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>Perbandingan dan pembelian produk asuransi dari berbagai mitra penyedia</li>
-                  <li>Pengajuan klaim secara digital dan pemantauan statusnya</li>
-                  <li>Pengelolaan polis asuransi secara terpadu dalam satu platform</li>
-                  <li>Konsultasi dan rekomendasi produk asuransi berdasarkan kebutuhan</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">3. Kelayakan pengguna</h3>
-                <p>Layanan InsurTech hanya dapat digunakan oleh:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  <li>Individu berusia minimal 17 tahun atau yang telah memiliki KTP</li>
-                  <li>Warga Negara Indonesia atau warga asing yang berdomisili di Indonesia</li>
-                  <li>Badan usaha yang terdaftar secara sah di Indonesia</li>
-                </ul>
-                <p className="mt-1">InsurTech berhak menolak atau menonaktifkan akun yang tidak memenuhi kelayakan ini.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">4. Akun dan keamanan</h3>
-                <p>Pengguna bertanggung jawab untuk menjaga kerahasiaan informasi login dan semua aktivitas yang terjadi di akunnya. InsurTech tidak bertanggung jawab atas kerugian akibat kelalaian pengguna dalam menjaga keamanan akun.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">5. Kewajiban pengguna</h3>
-                <p>Pengguna wajib:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  <li>Memberikan informasi yang akurat, lengkap, dan terkini</li>
-                  <li>Tidak menyalahgunakan platform untuk tujuan penipuan atau ilegal</li>
-                  <li>Tidak melakukan tindakan yang merusak sistem atau pengalaman pengguna lain</li>
-                  <li>Memahami peraturan perundang-undangan yang berlaku di Indonesia</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">6. Pembatasan tanggung jawab</h3>
-                <p>InsurTech bertindak sebagai platform perantara dan tidak bertanggung jawab atas keputusan underwriting, penolakan klaim, atau tindakan lain dari mitra asuransi. Semua ketentuan polis mengacu pada dokumen polis dari penerbit asuransi terkait.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">7. Perubahan layanan</h3>
-                <p>InsurTech berhak mengubah, memperbaiki, atau menghentikan fitur layanan sewaktu-waktu. Perubahan material pada syarat dan ketentuan akan diinformasikan melalui email atau notifikasi dalam aplikasi minimal 14 hari sebelum berlaku.</p>
-              </div>
-              <div>
-                <h3 className="font-bold text-base mb-2">8. Hukum yang berlaku</h3>
-                <p>Syarat dan ketentuan ini tunduk pada hukum Republik Indonesia. Setiap perselisihan yang timbul akan diselesaikan melalui musyawarah terlebih dahulu, dan apabila tidak tercapai kesepakatan, akan diselesaikan melalui Pengadilan Negeri Jakarta Selatan.</p>
-              </div>
+              <div><h3 className="font-bold text-base mb-2">1. Penerimaan syarat</h3><p>Dengan mendaftar, mengakses, atau menggunakan layanan InsurTech, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang tercantum dalam dokumen ini.</p></div>
+              <div><h3 className="font-bold text-base mb-2">2. Definisi layanan</h3><p>InsurTech adalah platform teknologi asuransi yang menyediakan perbandingan dan pembelian produk asuransi, pengajuan klaim secara digital, dan pengelolaan polis secara terpadu.</p></div>
+              <div><h3 className="font-bold text-base mb-2">3. Kelayakan pengguna</h3><p>Layanan hanya dapat digunakan oleh individu berusia minimal 17 tahun atau yang telah memiliki KTP, dan Warga Negara Indonesia atau warga asing berdomisili di Indonesia.</p></div>
+              <div><h3 className="font-bold text-base mb-2">4. Akun dan keamanan</h3><p>Pengguna bertanggung jawab menjaga kerahasiaan informasi login dan semua aktivitas yang terjadi di akunnya.</p></div>
+              <div><h3 className="font-bold text-base mb-2">5. Kewajiban pengguna</h3><p>Pengguna wajib memberikan informasi yang akurat, lengkap, dan terkini serta tidak menyalahgunakan platform untuk tujuan penipuan atau ilegal.</p></div>
+              <div><h3 className="font-bold text-base mb-2">6. Pembatasan tanggung jawab</h3><p>InsurTech bertindak sebagai platform perantara dan tidak bertanggung jawab atas keputusan underwriting atau penolakan klaim dari mitra asuransi.</p></div>
+              <div><h3 className="font-bold text-base mb-2">7. Hukum yang berlaku</h3><p>Syarat dan ketentuan ini tunduk pada hukum Republik Indonesia.</p></div>
             </div>
           </div>
         </div>
@@ -568,9 +507,7 @@ export default function RegisterPage() {
                 <FaCheckCircle className="text-green-600 text-3xl" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Pendaftaran Berhasil!</h3>
-              <p className="text-gray-600 text-sm mt-2">
-                Akun Anda telah berhasil dibuat. Anda akan dialihkan ke halaman utama.
-              </p>
+              <p className="text-gray-600 text-sm mt-2">Akun dan dokumen Anda berhasil disimpan. Menunggu verifikasi admin.</p>
             </div>
           </div>
         </div>

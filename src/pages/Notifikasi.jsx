@@ -14,7 +14,6 @@ export default function Notifikasi() {
       try {
         const token = localStorage.getItem('token');
         
-        // PERBAIKAN UTAMA: Hubungkan ke alamat url absolut server Laravel Anda
         const response = await fetch('http://127.0.0.1:8000/api/nasabah/notifikasi', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -26,7 +25,6 @@ export default function Notifikasi() {
         if (!response.ok) throw new Error('Gagal mengambil data notifikasi dari server');
         const data = await response.json();
         
-        // Amankan jika sewaktu-waktu objek dibungkus data wrapper kembali
         const resData = data.data || data;
         setNotifications({
           hariIni: resData.hariIni || [],

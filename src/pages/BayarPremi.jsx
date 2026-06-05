@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaAngleLeft } from 'react-icons/fa';
+import { FaHeartbeat, FaArrowLeft } from 'react-icons/fa';
 
 export default function BayarPremi() {
   const location = useLocation();
@@ -28,8 +28,7 @@ export default function BayarPremi() {
   }
 
   const diskon = 0;
-  // Format totalBayar menjadi 500.000 (tanpa desimal)
-  const totalBayar = (premi || 500000) - diskon;
+  const totalBayar = (premi || 0) - diskon;
 
   const handleBayarNow = async () => {
     if (!jenis || !noPolis) {
@@ -41,7 +40,6 @@ export default function BayarPremi() {
     try {
       const token = localStorage.getItem('token');
       
-      // PERBAIKAN UTAMA: Arahkan url fetch ke endpoint baru Laravel kita secara dinamis menggunakan noPolis
       const response = await fetch(`http://127.0.0.1:8000/api/polis/${noPolis}/bayar-premi`, {
         method: 'POST',
         headers: {
@@ -62,10 +60,8 @@ export default function BayarPremi() {
       const data = await response.json();
       const resData = data.data || data;
 
-      // PERBAIKAN: Tangkap properti transaction_id (snake_case) yang dikirim oleh backend Laravel kita
       const transactionId = resData.transaction_id || resData.transactionId || `PAY-${Date.now()}`;
 
-      // Pindah halaman ke tampilan QRIS sambil melempar state data yang dibutuhkan
       navigate('/pembayaran-premi', {
         state: {
           jenis: jenis,
@@ -91,14 +87,14 @@ export default function BayarPremi() {
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div className="p-4 border-b flex items-center gap-3">
           <button onClick={handleBackToPolisSaya} className="text-gray-600 hover:text-gray-900 transition p-1">
-            <FaAngleLeft size={20} />
+            <FaArrowLeft size={18} />
           </button>
           <h1 className="text-xl font-bold text-gray-800">Bayar Premi</h1>
         </div>
 
         <div className="p-5 space-y-5">
           <div className="border-b pb-3 flex items-center gap-3">
-            <FaHome className="text-blue-300 text-3xl" />
+            <FaHeartbeat className="text-red-500 text-3xl" />
             <div>
               <h2 className="text-lg font-semibold text-gray-800">{jenis}</h2>
               <p className="text-sm text-gray-500">No. Polis: {noPolis}</p>
@@ -108,7 +104,7 @@ export default function BayarPremi() {
           <div className="text-center">
             <p className="text-gray-500 text-sm">Total premi yang harus dibayar bulan ini</p>
             <p className="text-3xl font-extrabold text-sky-900">
-              Rp {(totalBayar).toLocaleString('id-ID')}
+              Rp {(premi || 0).toLocaleString('id-ID')}
             </p>
           </div>
 
@@ -125,7 +121,7 @@ export default function BayarPremi() {
           <div className="bg-gray-50 p-4 rounded-lg space-y-3">
             <h3 className="font-semibold text-gray-700 text-sm">RINGKASAN PEMBAYARAN</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-600">Premi</span><span>Rp {(totalBayar).toLocaleString('id-ID')}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Premi</span><span>Rp {(premi || 0).toLocaleString('id-ID')}</span></div>
               <div className="flex justify-between"><span className="text-gray-600">Diskon</span><span>-Rp {diskon.toLocaleString('id-ID')}</span></div>
               <div className="flex justify-between pt-2 border-t font-semibold"><span>Total bayar</span><span className="font-bold text-sky-900">Rp {totalBayar.toLocaleString('id-ID')}</span></div>
             </div>

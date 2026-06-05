@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Shield, LayoutDashboard, Package, ClipboardList, User, LogOut, Search, Menu } from 'lucide-react';
+import { api } from '../lib/api'; // TAMBAHAN: Import file api kita
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -8,25 +9,31 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Ambil jumlah klaim pending dari API
+  // Mengambil jumlah klaim pending menggunakan endpoint statistik yang sudah kita perbaiki
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/admin/klaim/pending-count', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (!response.ok) throw new Error('Gagal mengambil data');
-        const data = await response.json();
-        setPendingCount(data.count || 0);
+        
+        // Gunakan rute dashboard/stats agar tidak perlu membuat fungsi baru di backend
+        const response = await api('/admin/dashboard/stats', 'GET', null, token);
+        
+        const responseData = response?.data || response || {};
+        const serverStats = responseData.data || responseData; 
+        
+        // Update angka badge sesuai klaim pending dari database
+        setPendingCount(serverStats.klaimPending || 0);
       } catch (error) {
         console.error('Error fetching pending count:', error);
         setPendingCount(0);
       }
     };
+
     fetchPendingCount();
+    
+    // Opsional: Bikin interval agar badge otomatis update tiap 10 detik tanpa perlu di-refresh
+    const interval = setInterval(fetchPendingCount, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const menus = [
@@ -48,7 +55,6 @@ export default function AdminLayout() {
 
   const hideSearch = location.pathname === '/admin-review-klaim' || location.pathname === '/admin-tambah-produk' || location.pathname === '/admin-pengguna' || location.pathname === '/admin-verifikasi-dokumen';
   
-  // FUNGSI LOGOUT GABUNGAN DARI ADMINSIDEBAR
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

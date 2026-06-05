@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaArrowLeft, FaCheck, FaTimes, FaFilePdf, FaImage, FaExternalLinkAlt } from 'react-icons/fa';
 import { IdCard, Users } from 'lucide-react';
 
 export default function AdminVerifikasiDokumen() {
@@ -8,11 +8,12 @@ export default function AdminVerifikasiDokumen() {
   const navigate = useNavigate();
   const { userData } = location.state || {};
 
-  // Sinkronisasi pendeteksian ID Pengguna dari state halaman sebelumnya
   const userId = userData?.ID_Pengguna || userData?.id;
 
   const [ktpData, setKtpData] = useState(null);
   const [kkData, setKkData] = useState(null);
+  const [ktpPreview, setKtpPreview] = useState(null);
+  const [kkPreview, setKkPreview] = useState(null);
   const [ktpChecklist, setKtpChecklist] = useState({
     fotoJelas: false,
     namaSesuai: false,
@@ -28,6 +29,9 @@ export default function AdminVerifikasiDokumen() {
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageTitle, setSelectedImageTitle] = useState('');
 
   useEffect(() => {
     if (!userId) {
@@ -40,46 +44,74 @@ export default function AdminVerifikasiDokumen() {
       try {
         const token = localStorage.getItem('token');
         
-        // PERBAIKAN: Diarahkan ke alamat absolut API backend Laravel Anda
-        const response = await fetch(`http://127.0.0.1:8000/api/admin/verifikasi-dokumen/${userId}`, {
+        const response = await fetch(`http://127.0.0.1:8000/api/pengguna/${userId}`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Accept': 'application/json'
           }
         });
         
-        if (!response.ok) throw new Error('Gagal mengambil data dokumen');
-        const data = await response.json();
-        setKtpData(data.ktp); 
-        setKkData(data.kk);   
+        if (!response.ok) throw new Error('Gagal mengambil data pengguna');
+        const result = await response.json();
+        const user = result.data || result;
+        
+        const ktpFile = user.foto_ktp;
+        const kkFile = user.foto_kk;
+        
+        if (ktpFile) {
+          const ktpUrl = `http://127.0.0.1:8000/storage/${ktpFile}`;
+          setKtpPreview(ktpUrl);
+          setKtpData({
+            fileName: ktpFile.split('/').pop(),
+            fileUrl: ktpUrl,
+            isImage: !ktpFile.endsWith('.pdf'),
+            nik: user.NIK || '-',
+            nama: user.Nama_Lengkap || '-',
+            ttl: user.Tanggal_Lahir || '-'
+          });
+        } else {
+          setKtpData(null);
+        }
+        
+        if (kkFile) {
+          const kkUrl = `http://127.0.0.1:8000/storage/${kkFile}`;
+          setKkPreview(kkUrl);
+          setKkData({
+            fileName: kkFile.split('/').pop(),
+            fileUrl: kkUrl,
+            isImage: !kkFile.endsWith('.pdf'),
+            noKK: user.No_KK || '-',
+            kepalaKK: user.Nama_Lengkap || '-',
+            anggota: '-'
+          });
+        } else {
+          setKkData(null);
+        }
+        
       } catch (err) {
         console.error('Error fetching dokumen:', err);
-        
-        // SUNTIKAN AMAN: Jika database belum mencatat tabel berkas fisik,
-        // kita buat fallback data mockup otomatis berbasis profil user agar UI tidak hancur/kosong
-        setKtpData({
-          fileName: `KTP_${userData?.Nama_Lengkap || 'Nasabah'}.png`,
-          fileSize: '1.8 MB',
-          fileType: 'image/png',
-          nik: userData?.ID_Pengguna || '3507123456780003',
-          nama: userData?.Nama_Lengkap || 'Nama Nasabah',
-          ttl: 'Malang, 15-10-1997'
-        });
-        setKkData({
-          fileName: `KK_${userData?.Nama_Lengkap || 'Nasabah'}.png`,
-          fileSize: '2.5 MB',
-          fileType: 'image/png',
-          noKK: '3507987654321004',
-          kepalaKK: userData?.Nama_Lengkap || 'Kepala Keluarga',
-          anggota: '4 Anggota Keluarga'
-        });
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
     fetchDokumen();
-  }, [userId, userData]);
+  }, [userId]);
+
+  const handleBukaDokumen = (url, title) => {
+    if (!url) {
+      alert('Dokumen belum diupload');
+      return;
+    }
+    
+    if (url.endsWith('.pdf')) {
+      window.open(url, '_blank');
+    } else {
+      setSelectedImage(url);
+      setSelectedImageTitle(title);
+      setShowImageModal(true);
+    }
+  };
 
   const handleKtpCheck = (field) => {
     setKtpChecklist(prev => ({ ...prev, [field]: !prev[field] }));
@@ -102,7 +134,9 @@ export default function AdminVerifikasiDokumen() {
         showToast('Harap centang semua checklist sebelum menyetujui dokumen.', 'error');
         return;
       }
-    } else if (keputusan === 'tolak' && !catatan.trim()) {
+    }
+    
+    if (keputusan === 'tolak' && !catatan.trim()) {
       showToast('Harap isi catatan alasan penolakan jika berkas ditolak.', 'error');
       return;
     }
@@ -110,7 +144,17 @@ export default function AdminVerifikasiDokumen() {
     try {
       const token = localStorage.getItem('token');
       
-      // PERBAIKAN: Sinkronisasi rute PUT absolut ke VerifikasiController Anda
+      const requestBody = {
+        status: keputusan === 'setuju' ? 'verified' : 'rejected'
+      };
+      
+      if (keputusan === 'tolak' && catatan.trim()) {
+        requestBody.alasan_penolakan = catatan;
+      }
+      
+      console.log('Sending request to:', `http://127.0.0.1:8000/api/admin/verifikasi/${userId}`);
+      console.log('Request body:', requestBody);
+      
       const response = await fetch(`http://127.0.0.1:8000/api/admin/verifikasi/${userId}`, {
         method: 'PUT',
         headers: {
@@ -118,31 +162,44 @@ export default function AdminVerifikasiDokumen() {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        // SINKRONISASI PAYLOAD: Menyesuaikan parameter input validator backend Laravel Anda
-        body: JSON.stringify({
-          status: keputusan === 'setuju' ? 'verified' : 'rejected',
-          alasan_penolakan: catatan
-        })
+        body: JSON.stringify(requestBody)
       });
       
-      if (!response.ok) throw new Error('Gagal menyimpan verifikasi');
+      console.log('Response status:', response.status);
+      
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch(e) {
+        console.error('JSON parse error:', e);
+        throw new Error('Response dari server tidak valid: ' + responseText.substring(0, 100));
+      }
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Gagal menyimpan verifikasi');
+      }
+      
       showToast(`Verifikasi ${keputusan === 'setuju' ? 'disetujui' : 'ditolak'}`, 'success');
       setTimeout(() => {
         navigate('/admin-pengguna');
       }, 1500);
+      
     } catch (err) {
       console.error('Error submitting verifikasi:', err);
-      showToast('Terjadi kesalahan, silakan coba lagi.', 'error');
+      showToast(err.message || 'Terjadi kesalahan, silakan coba lagi.', 'error');
     }
   };
 
   if (loading) return <div className="p-6 text-center">Memuat data dokumen...</div>;
   if (error) return <div className="p-6 text-center text-red-600">Error: {error}</div>;
-  if (!ktpData || !kkData) return <div className="p-6 text-center">Data dokumen tidak lengkap</div>;
 
   return (
-    <div className="min-h-screen py-1 px-4 relative">
-      <div className="max-w-5xl mx-auto">
+    // ✅ HANYA INI YANG BERUBAH — bg-gray-50 diganti warna krem sesuai Figma
+    <div className="min-h-screen py-4 px-4 relative" style={{ backgroundColor: '#FEF9EE' }}>
+      <div className="max-w-6xl mx-auto">
         {/* Toast */}
         {toast && (
           <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-semibold ${
@@ -156,8 +213,8 @@ export default function AdminVerifikasiDokumen() {
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-6">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Data Pengguna</h1>
-              <p className="text-sm text-gray-500 mt-1">Verifikasi dokumen untuk {userData?.nama || 'Pengguna'}</p>
+              <h1 className="text-2xl font-bold text-gray-800">Verifikasi Dokumen</h1>
+              <p className="text-sm text-gray-500 mt-1">Verifikasi dokumen KTP dan KK pengguna</p>
             </div>
             <div className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded-full">
               Pending
@@ -165,25 +222,73 @@ export default function AdminVerifikasiDokumen() {
           </div>
         </div>
 
-        {/* KTP & KK Section dalam dua kolom sejajar */}
+        {/* KTP & KK Section */}
         <div className="grid md:grid-cols-2 gap-6 mb-6">
           {/* KTP Section */}
           <div className="bg-white rounded-2xl shadow-sm p-5">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <IdCard className="w-6 h-6" /> KTP
+              <IdCard className="w-6 h-6 text-sky-900" /> KTP
             </h2>
             <div className="flex flex-col gap-4">
               <div className="bg-gray-100 rounded-xl p-4 flex flex-col items-center text-center">
-                <div className="text-3xl mb-2">📄</div>
-                <div>
-                  <p className="font-semibold text-gray-800">{ktpData.fileName}</p>
-                  <p className="text-xs text-gray-500">{ktpData.fileSize} · {ktpData.fileType}</p>
-                </div>
+                {ktpData ? (
+                  <>
+                    {ktpData.isImage ? (
+                      <img 
+                        src={ktpData.fileUrl} 
+                        alt="KTP" 
+                        className="w-40 h-28 object-cover rounded-lg mb-2 cursor-pointer hover:opacity-80 border border-gray-300"
+                        onClick={() => handleBukaDokumen(ktpData.fileUrl, 'KTP')}
+                      />
+                    ) : (
+                      <div className="text-4xl mb-2">📄</div>
+                    )}
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm">{ktpData.fileName}</p>
+                      <button
+                        onClick={() => handleBukaDokumen(ktpData.fileUrl, 'KTP')}
+                        className="text-sky-600 hover:text-sky-800 text-xs flex items-center gap-1 mx-auto mt-1"
+                      >
+                        <FaExternalLinkAlt size={10} /> Buka Dokumen
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-gray-500">Dokumen KTP belum diupload</p>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-gray-500">NIK</span><br /><span className="font-semibold">{ktpData.nik}</span></div>
-                <div><span className="text-gray-500">NAMA</span><br /><span className="font-semibold">{ktpData.nama}</span></div>
-                <div><span className="text-gray-500">TTL</span><br /><span className="font-semibold">{ktpData.ttl}</span></div>
+             
+              <div className="border-t border-gray-200 pt-3 mt-2">
+                <p className="text-xs font-semibold text-gray-500 mb-2">VERIFIKASI DOKUMEN</p>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={ktpChecklist.fotoJelas} 
+                      onChange={() => handleKtpCheck('fotoJelas')} 
+                      className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                    />
+                    <span className="text-sm text-gray-700">Foto KTP jelas dan terbaca</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={ktpChecklist.namaSesuai} 
+                      onChange={() => handleKtpCheck('namaSesuai')} 
+                      className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                    />
+                    <span className="text-sm text-gray-700">Nama sesuai dengan data pendaftaran</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={ktpChecklist.nikValid} 
+                      onChange={() => handleKtpCheck('nikValid')} 
+                      className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                    />
+                    <span className="text-sm text-gray-700">NIK valid (16 digit)</span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -191,20 +296,68 @@ export default function AdminVerifikasiDokumen() {
           {/* KK Section */}
           <div className="bg-white rounded-2xl shadow-sm p-5">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Users className="w-6 h-6" /> KK
+              <Users className="w-6 h-6 text-sky-900" /> KK
             </h2>
             <div className="flex flex-col gap-4">
               <div className="bg-gray-100 rounded-xl p-4 flex flex-col items-center text-center">
-                <div className="text-3xl mb-2">📄</div>
-                <div>
-                  <p className="font-semibold text-gray-800">{kkData.fileName}</p>
-                  <p className="text-xs text-gray-500">{kkData.fileSize} · {kkData.fileType}</p>
-                </div>
+                {kkData ? (
+                  <>
+                    {kkData.isImage ? (
+                      <img 
+                        src={kkData.fileUrl} 
+                        alt="KK" 
+                        className="w-40 h-28 object-cover rounded-lg mb-2 cursor-pointer hover:opacity-80 border border-gray-300"
+                        onClick={() => handleBukaDokumen(kkData.fileUrl, 'KK')}
+                      />
+                    ) : (
+                      <div className="text-4xl mb-2">📄</div>
+                    )}
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm">{kkData.fileName}</p>
+                      <button
+                        onClick={() => handleBukaDokumen(kkData.fileUrl, 'KK')}
+                        className="text-sky-600 hover:text-sky-800 text-xs flex items-center gap-1 mx-auto mt-1"
+                      >
+                        <FaExternalLinkAlt size={10} /> Buka Dokumen
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-gray-500">Dokumen KK belum diupload</p>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-gray-500">No. KK</span><br /><span className="font-semibold">{kkData.noKK}</span></div>
-                <div><span className="text-gray-500">Kepala KK</span><br /><span className="font-semibold">{kkData.kepalaKK}</span></div>
-                <div><span className="text-gray-500">Anggota</span><br /><span className="font-semibold">{kkData.anggota}</span></div>
+              
+              <div className="border-t border-gray-200 pt-3 mt-2">
+                <p className="text-xs font-semibold text-gray-500 mb-2">VERIFIKASI DOKUMEN</p>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={kkChecklist.fotoJelas} 
+                      onChange={() => handleKkCheck('fotoJelas')} 
+                      className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                    />
+                    <span className="text-sm text-gray-700">Foto KK jelas dan terbaca</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={kkChecklist.namaTercantum} 
+                      onChange={() => handleKkCheck('namaTercantum')} 
+                      className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                    />
+                    <span className="text-sm text-gray-700">Nama tercantum dalam KK</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={kkChecklist.nomorKKValid} 
+                      onChange={() => handleKkCheck('nomorKKValid')} 
+                      className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                    />
+                    <span className="text-sm text-gray-700">Nomor KK valid</span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -226,11 +379,11 @@ export default function AdminVerifikasiDokumen() {
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-6">
           <h2 className="text-lg font-bold text-gray-800 mb-3">KEPUTUSAN ADMIN</h2>
           <div className="flex gap-6">
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="keputusan" value="setuju" checked={keputusan === 'setuju'} onChange={() => setKeputusan('setuju')} className="w-4 h-4 text-green-600" />
               <span className="text-gray-700">Setuju</span>
             </label>
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="keputusan" value="tolak" checked={keputusan === 'tolak'} onChange={() => setKeputusan('tolak')} className="w-4 h-4 text-red-600" />
               <span className="text-gray-700">Tolak</span>
             </label>
@@ -247,6 +400,51 @@ export default function AdminVerifikasiDokumen() {
           </button>
         </div>
       </div>
+
+      {/* Modal Preview Gambar */}
+      {showImageModal && selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowImageModal(false);
+            setSelectedImage(null);
+          }}
+        >
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => {
+                setShowImageModal(false);
+                setSelectedImage(null);
+              }}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors text-3xl font-bold"
+            >
+              ✕
+            </button>
+            <h3 className="text-white text-center mb-2">{selectedImageTitle}</h3>
+            <img
+              src={selectedImage}
+              alt={selectedImageTitle}
+              className="w-full h-auto rounded-lg shadow-2xl"
+              style={{ maxHeight: '85vh', objectFit: 'contain' }}
+              onError={(e) => {
+                alert('Gagal memuat gambar');
+                setShowImageModal(false);
+              }}
+            />
+            <div className="text-center mt-4">
+              <button
+                onClick={() => {
+                  setShowImageModal(false);
+                  setSelectedImage(null);
+                }}
+                className="bg-white text-gray-800 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

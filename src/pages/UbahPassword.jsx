@@ -4,8 +4,10 @@ import { FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash } from 'react-icons/fa'
 
 export default function UbahPassword() {
   const navigate = useNavigate();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
@@ -32,6 +34,13 @@ export default function UbahPassword() {
   const strength = getPasswordStrength();
 
   const handleSave = async () => {
+    // Validasi current password
+    if (!currentPassword) {
+      setErrorMessage('Password lama wajib diisi');
+      setShowErrorPopup(true);
+      return;
+    }
+    
     if (!isPasswordValid) {
       setErrorMessage('Kata sandi Anda belum memenuhi ketentuan.');
       setShowErrorPopup(true);
@@ -46,18 +55,44 @@ export default function UbahPassword() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/nasabah/ubah-password', {
+      const response = await fetch('http://127.0.0.1:8000/api/ubah-password', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ newPassword: password })
+        body: JSON.stringify({ 
+          current_password: currentPassword,
+          new_password: password,
+          confirm_password: confirmPassword
+        })
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal mengubah password');
+      
+      let data = {};
+      const textResponse = await response.text();
+      
+      if (textResponse) {
+        try {
+          data = JSON.parse(textResponse);
+        } catch (e) {
+          console.error('JSON parse error:', e);
+        }
       }
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setErrorMessage(data.message || 'Password lama tidak sesuai');
+        } else if (response.status === 422 && data.errors) {
+          const firstError = Object.values(data.errors)[0];
+          setErrorMessage(firstError?.[0] || data.message || 'Validasi gagal');
+        } else {
+          setErrorMessage(data.message || 'Gagal mengubah password');
+        }
+        setShowErrorPopup(true);
+        return;
+      }
+      
       setShowSuccessPopup(true);
     } catch (error) {
       console.error('Error changing password:', error);
@@ -86,6 +121,27 @@ export default function UbahPassword() {
       </div>
 
       <div className="bg-white rounded-xl shadow-md p-5 space-y-5">
+        {/* Password Lama */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Password Lama</label>
+          <div className="relative">
+            <input
+              type={showCurrentPassword ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500"
+              placeholder="Masukkan password lama"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+            >
+              {showCurrentPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+            </button>
+          </div>
+        </div>
+
         {/* Password Baru */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>

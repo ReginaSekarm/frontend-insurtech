@@ -34,7 +34,6 @@ export default function AdminProduk() {
         const response = await api('/produk', 'GET', null, token);
         const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
         
-        // JALAN AMAN: Normalisasi semua teks dari database ke format standar frontend
         const withIcons = data.map(p => {
           const rawStatus = (p.status || p.Status_Produk || 'draft').toLowerCase();
           
@@ -47,19 +46,14 @@ export default function AdminProduk() {
             ? `Rp ${rawPremi.toLocaleString('id-ID')}` 
             : rawPremi;
 
-          // PERBAIKAN: Ambil nilai Maksimal Klaim dengan benar
-          // Coba ambil dari berbagai kemungkinan nama field
           let maksValue = '-';
           const maksKlaim = p.Maksimal_Klaim || p.maksimal_klaim || p.maks_klaim || p.maks;
           
           if (maksKlaim && maksKlaim !== null && maksKlaim !== '') {
-            // Jika berupa angka, format dengan pemisah ribuan
             if (typeof maksKlaim === 'number') {
               maksValue = `Rp ${maksKlaim.toLocaleString('id-ID')}`;
             } 
-            // Jika sudah berupa string dengan nilai valid
             else if (typeof maksKlaim === 'string' && maksKlaim !== '-' && maksKlaim !== '') {
-              // Coba parse jika string angka
               const parsed = parseInt(maksKlaim);
               if (!isNaN(parsed)) {
                 maksValue = `Rp ${parsed.toLocaleString('id-ID')}`;
@@ -67,7 +61,6 @@ export default function AdminProduk() {
                 maksValue = maksKlaim;
               }
             }
-            // Jika berupa objek atau lainnya
             else if (maksKlaim && typeof maksKlaim === 'object') {
               maksValue = JSON.stringify(maksKlaim);
             }
@@ -160,13 +153,12 @@ export default function AdminProduk() {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats - HAPUS Review Klaim (merah) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { label: 'Total Produk', value: products.length, sub: '+1 bulan ini', color: 'text-green-600' },
           { label: 'Produk Aktif', value: products.filter(p => p.status === 'Aktif').length, sub: products.length > 0 ? `${Math.round((products.filter(p => p.status === 'Aktif').length / products.length) * 100)}% dari total` : '0%', color: 'text-green-600' },
           { label: 'Draft', value: products.filter(p => p.status === 'Draft').length, sub: 'Menunggu publikasi', color: 'text-yellow-400' },
-          { label: 'Review Klaim', value: '0', sub: 'Perlu ditinjau!', color: 'text-red-500' },
         ].map(({ label, value, sub, color }) => (
           <div key={label} className="bg-white rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500 font-medium">{label}</p>

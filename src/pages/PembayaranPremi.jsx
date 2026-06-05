@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { FaDownload, FaHome, FaAngleLeft } from 'react-icons/fa';
+import { FaDownload, FaHeartbeat, FaAngleLeft } from 'react-icons/fa';
 
 export default function PembayaranPremi() {
   const location = useLocation();
@@ -241,7 +241,7 @@ export default function PembayaranPremi() {
 
         <div className="p-5 space-y-5">
           <div className="border-b pb-3 flex items-center gap-3">
-            <FaHome className="text-blue-300 text-3xl" />
+            <FaHeartbeat className="text-red-500 text-3xl" />
             <div>
               <h2 className="text-lg font-semibold text-gray-800">{jenis}</h2>
               <p className="text-sm text-gray-500">No. Polis: {noPolis}</p>

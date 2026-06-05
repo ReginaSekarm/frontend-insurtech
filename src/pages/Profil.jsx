@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { FaUserCircle, FaIdCard, FaFileAlt, FaKey, FaSignOutAlt, FaHome, FaFileInvoice, FaShoppingCart, FaClipboardList, FaUser, FaLock } from 'react-icons/fa';
-import { api } from '../lib/api'; // TAMBAHAN: Import fungsi api
+import { FaUserCircle, FaFileAlt, FaSignOutAlt, FaUser, FaLock } from 'react-icons/fa';
+import { api } from '../lib/api';
 
 export default function Profil() {
   const navigate = useNavigate();
@@ -11,7 +11,6 @@ export default function Profil() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Deteksi notifikasi sukses ubah telepon (dari state navigasi)
   useEffect(() => {
     if (location.state?.phoneUpdateSuccess) {
       setShowPhoneSuccess(true);
@@ -21,67 +20,66 @@ export default function Profil() {
     }
   }, [location.state]);
 
-  // Ambil data profil dari API
-  useEffect(() => {
-    const fetchProfil = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        
-        // PERUBAHAN: Gunakan fungsi api() dan arahkan ke endpoint yang benar sesuai routes/api.php
-        const response = await api('/user', 'GET', null, token);
-        
-        // Mengamankan data jika respons backend dibungkus dalam objek 'user'
-        const userData = response.data?.user || response.data?.data || response.data || response;
-        
-        // AMANKAN NOMOR HP: Ambil dari API, jika kosong ambil dari localStorage
-        let phoneFromDatabase = userData?.no_telepon || userData?.noTelepon || userData?.No_Telepon || userData?.telepon || userData?.phone;
-        
-        if (!phoneFromDatabase || phoneFromDatabase === 'Belum diatur') {
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            phoneFromDatabase = parsedUser?.no_telepon || parsedUser?.noTelepon || parsedUser?.No_Telepon;
-          }
+  const fetchProfil = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api('/user', 'GET', null, token);
+      
+      const userData = response.data?.user || response.data?.data || response.data || response;
+      
+      let phoneFromDatabase = userData?.no_telepon || userData?.noTelepon || userData?.No_Telepon;
+      
+      if (!phoneFromDatabase || phoneFromDatabase === 'Belum diatur') {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          phoneFromDatabase = parsedUser?.no_telepon || parsedUser?.noTelepon;
         }
-
-        if (!phoneFromDatabase || phoneFromDatabase === 'Belum diatur') {
-          phoneFromDatabase = '081234567890'; 
-        }
-        
-        // Memetakan key dari backend ke format yang dipakai frontend
-        const mappedData = {
-            fullName: userData?.nama || userData?.Nama_Lengkap || userData?.name || 'Nasabah',
-            email: userData?.email || userData?.Email || '-',
-            phone: phoneFromDatabase,
-            isVerified: userData?.verifikasi_status === 'verified' || userData?.Verifikasi_Status === 'verified',
-            ktpStatus: userData?.ktp_status || 'Dalam Pengecekan',
-            kkStatus: userData?.kk_status || 'Dalam Pengecekan',
-            ktpUploadDate: userData?.ktp_upload_date || 'Belum diunggah',
-            kkUploadDate: userData?.kk_upload_date || 'Belum diunggah',
-        };
-        
-        setProfilData(mappedData);
-      } catch (err) {
-        console.error('Error fetching profil:', err);
-        setError(err.message || 'Gagal memuat profil');
-      } finally {
-        setLoading(false);
       }
-    };
+
+      if (!phoneFromDatabase || phoneFromDatabase === 'Belum diatur') {
+        phoneFromDatabase = 'Belum diisi';
+      }
+      
+      const isVerified = userData?.verifikasi_status === 'verified';
+      
+      // Cek apakah dokumen sudah diupload
+      const isKtpUploaded = !!(userData?.foto_ktp || userData?.foto_kp || userData?.ktp_path);
+      const isKkUploaded = !!(userData?.foto_kk || userData?.kk_path);
+      
+      const mappedData = {
+        fullName: userData?.nama || userData?.Nama_Lengkap || userData?.name || 'Nasabah',
+        email: userData?.email || userData?.Email || '-',
+        phone: phoneFromDatabase,
+        isVerified: isVerified,
+        ktpUploadDate: isKtpUploaded ? 'Sudah diunggah' : 'Belum diunggah',
+        kkUploadDate: isKkUploaded ? 'Sudah diunggah' : 'Belum diunggah',
+      };
+      
+      setProfilData(mappedData);
+    } catch (err) {
+      console.error('Error fetching profil:', err);
+      setError(err.message || 'Gagal memuat profil');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProfil();
+    const interval = setInterval(fetchProfil, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {
     try {
         const token = localStorage.getItem('token');
         if (token) {
-            // Opsional: Beritahu backend bahwa kita logout (biar token dihapus di server)
             await api('/logout', 'POST', null, token);
         }
     } catch (e) {
         console.error('Logout error (server)', e);
     } finally {
-        // Hapus token di sisi frontend terlepas dari respon server
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         navigate('/login');
@@ -108,9 +106,8 @@ export default function Profil() {
           </div>
           <div>
             <h1 className="text-xl font-bold">{profilData.fullName}</h1>
-            <p className="text-sm text-blue-100 flex items-center gap-1">
-              <span className={`inline-block w-2 h-2 rounded-full ${profilData.isVerified ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
-              {profilData.isVerified ? 'Akun Terverifikasi' : 'Belum Terverifikasi'}
+            <p className="text-sm text-blue-100">
+              {profilData.isVerified ? 'Akun Terverifikasi' : 'Menunggu Verifikasi'}
             </p>
           </div>
         </div>
@@ -135,7 +132,6 @@ export default function Profil() {
               <p className="text-xs text-gray-400">No. Telepon</p>
               <p className="text-gray-800">{profilData.phone}</p>
             </div>
-            {/* FIX: Sekarang path rute mengarah ke halaman khusus ubah nomor telepon */}
             <Link to="/ubah-telepon" className="text-sky-900 text-sm font-semibold flex items-center gap-1 mt-2">
               Atur Sekarang <span>›</span>
             </Link>
@@ -148,19 +144,26 @@ export default function Profil() {
             <FaFileAlt className="text-sky-800" size={16} /> Dokumen
           </h2>
           <div className="space-y-4">
+            {/* KTP */}
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-700">KTP</p>
-                <p className="text-xs text-gray-400">Diunggah: {profilData.ktpUploadDate}</p>
+                <p className="text-xs text-gray-400">{profilData.ktpUploadDate}</p>
               </div>
-              <button className="text-sky-800 text-sm font-medium">{profilData.ktpStatus}</button>
+              <span className="text-sky-900 text-sm font-medium">
+                {profilData.isVerified ? 'Terverifikasi' : 'Dalam Pengecekan'}
+              </span>
             </div>
+            
+            {/* Kartu Keluarga */}
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-700">Kartu Keluarga</p>
-                <p className="text-xs text-gray-400">Diunggah: {profilData.kkUploadDate}</p>
+                <p className="text-xs text-gray-400">{profilData.kkUploadDate}</p>
               </div>
-              <button className="text-sky-800 text-sm font-medium">{profilData.kkStatus}</button>
+              <span className="text-sky-900 text-sm font-medium">
+                {profilData.isVerified ? 'Terverifikasi' : 'Dalam Pengecekan'}
+              </span>
             </div>
           </div>
         </div>
