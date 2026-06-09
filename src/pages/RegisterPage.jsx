@@ -1,6 +1,61 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUserCircle, FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash, FaTrash, FaExternalLinkAlt, FaTimes } from 'react-icons/fa';
+import {
+  FaUserCircle, FaCheckCircle, FaTimesCircle,
+  FaEye, FaEyeSlash, FaTrash, FaExternalLinkAlt,
+  FaTimes, FaExclamationTriangle, FaInfoCircle
+} from 'react-icons/fa';
+
+function AlertPopup({ show, type = 'warning', title, message, onClose }) {
+  if (!show) return null;
+
+  const config = {
+    warning: {
+      bg: 'bg-yellow-100',
+      icon: <FaExclamationTriangle className="text-yellow-500 text-3xl" />,
+      btnColor: 'bg-yellow-500 hover:bg-yellow-600',
+    },
+    error: {
+      bg: 'bg-red-100',
+      icon: (
+        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      btnColor: 'bg-red-500 hover:bg-red-600',
+    },
+    info: {
+      bg: 'bg-blue-100',
+      icon: <FaInfoCircle className="text-blue-500 text-3xl" />,
+      btnColor: 'bg-sky-900 hover:bg-sky-800',
+    },
+  };
+
+  const c = config[type] || config.warning;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+        <div className="text-center">
+          <div className={`w-16 h-16 ${c.bg} rounded-full flex items-center justify-center mx-auto mb-4`}>
+            {c.icon}
+          </div>
+          <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+          <p className="text-gray-600 text-sm mt-2">{message}</p>
+        </div>
+        <div className="mt-5 flex justify-center">
+          <button
+            onClick={onClose}
+            className={`${c.btnColor} text-white px-8 py-2 rounded-lg font-semibold transition`}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -30,7 +85,28 @@ export default function RegisterPage() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedImageTitle, setSelectedImageTitle] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // ✅ TAMBAHAN loading state
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [alertPopup, setAlertPopup] = useState({
+    show: false,
+    type: 'warning',
+    title: '',
+    message: '',
+    onClose: null,
+  });
+
+  const showAlert = (type, title, message, callback = null) => {
+    setAlertPopup({
+      show: true,
+      type,
+      title,
+      message,
+      onClose: () => {
+        setAlertPopup(prev => ({ ...prev, show: false }));
+        if (callback) callback();
+      },
+    });
+  };
 
   const registeredEmails = ['nasabah@insurtech.com', 'admin@insurtech.com'];
 
@@ -56,7 +132,7 @@ export default function RegisterPage() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB');
+        showAlert('warning', 'File Terlalu Besar', 'Ukuran file KTP maksimal 5MB. Harap pilih file lain.');
         e.target.value = '';
         return;
       }
@@ -75,7 +151,7 @@ export default function RegisterPage() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB');
+        showAlert('warning', 'File Terlalu Besar', 'Ukuran file KK maksimal 5MB. Harap pilih file lain.');
         e.target.value = '';
         return;
       }
@@ -91,7 +167,10 @@ export default function RegisterPage() {
   };
 
   const handleBukaDokumen = (type, file, preview) => {
-    if (!file) { alert('File belum diupload'); return; }
+    if (!file) {
+      showAlert('info', 'File Belum Ada', 'File belum diupload. Silakan pilih file terlebih dahulu.');
+      return;
+    }
     if (file.type.startsWith('image/')) {
       if (preview) {
         setSelectedImage(preview);
@@ -152,13 +231,19 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!ktpFile || !kkFile) { alert('Harap upload KTP dan Kartu Keluarga'); return; }
-    if (!agreeTerms) { alert('Harap menyetujui syarat & ketentuan'); return; }
+    if (!ktpFile || !kkFile) {
+      showAlert('warning', 'Dokumen Belum Lengkap', 'Harap upload KTP dan Kartu Keluarga sebelum melanjutkan.');
+      return;
+    }
+
+    if (!agreeTerms) {
+      showAlert('info', 'Syarat & Ketentuan', 'Harap menyetujui Syarat & Ketentuan serta Kebijakan Privasi InsurTech untuk melanjutkan.');
+      return;
+    }
 
     setIsLoading(true);
 
     try {
-      // ✅ STEP 1: Register akun (tanpa file)
       const registerRes = await fetch('http://localhost:8000/api/register', {
         method: 'POST',
         headers: {
@@ -186,12 +271,11 @@ export default function RegisterPage() {
           const errorMsg = registerData.errors
             ? Object.values(registerData.errors).flat().join(', ')
             : registerData.message;
-          alert(errorMsg || 'Registrasi gagal. Silakan coba lagi.');
+          showAlert('error', 'Registrasi Gagal', errorMsg || 'Registrasi gagal. Silakan coba lagi.');
         }
         return;
       }
 
-      // ✅ STEP 2: Login otomatis untuk dapat token
       const loginRes = await fetch('http://localhost:8000/api/login', {
         method: 'POST',
         headers: {
@@ -207,8 +291,12 @@ export default function RegisterPage() {
       const loginData = await loginRes.json();
 
       if (!loginRes.ok) {
-        alert('Registrasi berhasil tapi gagal login otomatis. Silakan login manual.');
-        navigate('/login');
+        showAlert(
+          'info',
+          'Login Otomatis Gagal',
+          'Registrasi berhasil tapi gagal login otomatis. Silakan login manual.',
+          () => navigate('/login')
+        );
         return;
       }
 
@@ -216,17 +304,15 @@ export default function RegisterPage() {
       localStorage.setItem('token', token);
       if (loginData.user) localStorage.setItem('user', JSON.stringify(loginData.user));
 
-      // ✅ STEP 3: Upload dokumen KTP & KK dengan key yang benar
       const dokumenForm = new FormData();
-      dokumenForm.append('foto_ktp', ktpFile); // ✅ key sesuai backend
-      dokumenForm.append('foto_kk', kkFile);   // ✅ key sesuai backend
+      dokumenForm.append('foto_ktp', ktpFile);
+      dokumenForm.append('foto_kk', kkFile);
 
       const uploadRes = await fetch('http://localhost:8000/api/upload-dokumen', {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`,
-          // ❌ jangan set Content-Type — biarkan browser set otomatis untuk FormData
         },
         body: dokumenForm,
       });
@@ -234,12 +320,16 @@ export default function RegisterPage() {
       const uploadData = await uploadRes.json();
 
       if (!uploadRes.ok) {
-        alert('Akun berhasil dibuat, tapi gagal upload dokumen: ' + (uploadData.message || 'Coba upload ulang di halaman profil.'));
-        navigate('/login');
+        showAlert(
+          'warning',
+          'Upload Dokumen Gagal',
+          'Akun berhasil dibuat, tapi gagal upload dokumen: ' +
+            (uploadData.message || 'Coba upload ulang di halaman profil.'),
+          () => navigate('/login')
+        );
         return;
       }
 
-      // ✅ Semua berhasil
       setShowSuccessPopup(true);
       setTimeout(() => {
         setShowSuccessPopup(false);
@@ -248,7 +338,7 @@ export default function RegisterPage() {
 
     } catch (error) {
       console.error('Error registrasi:', error);
-      alert('Terjadi kesalahan jaringan. Pastikan backend menyala.');
+      showAlert('error', 'Kesalahan Jaringan', 'Terjadi kesalahan jaringan. Pastikan backend menyala.');
     } finally {
       setIsLoading(false);
     }
@@ -422,7 +512,6 @@ export default function RegisterPage() {
               </label>
             </div>
 
-            {/* ✅ Tombol dengan loading state */}
             <button type="submit" disabled={isLoading}
               className="w-full bg-sky-900 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed">
               {isLoading ? 'Memproses...' : 'Daftar'}
@@ -438,6 +527,15 @@ export default function RegisterPage() {
         </div>
       </div>
 
+      {/* ✅ CUSTOM ALERT POPUP */}
+      <AlertPopup
+        show={alertPopup.show}
+        type={alertPopup.type}
+        title={alertPopup.title}
+        message={alertPopup.message}
+        onClose={alertPopup.onClose}
+      />
+
       {/* MODAL PREVIEW GAMBAR */}
       {showImageModal && selectedImage && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
@@ -451,7 +549,10 @@ export default function RegisterPage() {
             <img src={selectedImage} alt={selectedImageTitle}
               className="w-full h-auto rounded-lg shadow-2xl"
               style={{ maxHeight: '85vh', objectFit: 'contain' }}
-              onError={() => { alert('Gagal memuat gambar'); setShowImageModal(false); }} />
+              onError={() => {
+                showAlert('error', 'Gagal Memuat Gambar', 'Gambar tidak dapat ditampilkan.');
+                setShowImageModal(false);
+              }} />
             <div className="text-center mt-4">
               <button onClick={() => { setShowImageModal(false); setSelectedImage(null); }}
                 className="bg-white text-gray-800 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100">Tutup</button>
